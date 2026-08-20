@@ -59,24 +59,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
       if (next is AuthError) {
         final isSuccess = next.message.contains('berhasil') ||
             next.message.contains('dikirim');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(
-                  isSuccess
-                      ? Icons.check_circle_outline
-                      : Icons.error_outline,
-                  color: isSuccess ? AppTheme.success : AppTheme.danger,
-                  size: 18,
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(next.message)),
-              ],
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        if (isSuccess) {
+          AppTheme.showSuccessSnackBar(context, next.message);
+        } else {
+          AppTheme.showErrorSnackBar(context, next.message);
+        }
         if (isSuccess) {
           Future.delayed(const Duration(seconds: 2), () {
             if (!context.mounted) return;
@@ -151,43 +138,46 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // CloudPulse Sky-to-Violet Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppTheme.tertiary.withValues(alpha: 0.2),
-                AppTheme.primary.withValues(alpha: 0.15),
+        // PocketFlow Official Logo
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.asset(
+            'assets/images/logo.png',
+            height: 48,
+            fit: BoxFit.contain,
+            errorBuilder: (ctx, err, stack) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: AppTheme.primary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'PocketFlow',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                  ),
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-            border: Border.all(
-              color: AppTheme.tertiary.withValues(alpha: 0.35),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.auto_graph_rounded, color: AppTheme.tertiary, size: 15),
-              const SizedBox(width: 6),
-              Text(
-                'Buat Akun',
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.tertiary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         Text(
-          'Mulai atur\nkeuanganmu 🚀',
+          'Mulai atur alokasi\nkeuanganmu ✨',
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 30,
+            fontSize: 28,
             fontWeight: FontWeight.w700,
             color: AppTheme.textDarkPrimary,
             height: 1.2,

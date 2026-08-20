@@ -24,14 +24,14 @@ class CategoryTemplateItem {
 
   factory CategoryTemplateItem.fromJson(Map<String, dynamic> json) {
     return CategoryTemplateItem(
-      id: json['id'] as String,
-      templateKey: json['template_key'] as String,
-      templateName: json['template_name'] as String,
-      categoryName: json['category_name'] as String,
-      categoryType: json['category_type'] as String,
-      defaultAllocationType: json['default_allocation_type'] as String,
-      defaultFixedAmount: (json['default_fixed_amount'] as num?)?.toInt() ?? 0,
-      defaultPercentage: (json['default_percentage'] as num?)?.toDouble(),
+      id: json['id'] as String? ?? '',
+      templateKey: json['template_key'] as String? ?? '',
+      templateName: json['template_name'] as String? ?? '',
+      categoryName: json['item_name'] as String? ?? json['category_name'] as String? ?? 'Kategori',
+      categoryType: json['item_type'] as String? ?? json['category_type'] as String? ?? 'expense',
+      defaultAllocationType: json['allocation_type'] as String? ?? json['default_allocation_type'] as String? ?? 'fixed',
+      defaultFixedAmount: (json['fixed_amount'] as num?)?.toInt() ?? (json['default_fixed_amount'] as num?)?.toInt() ?? 0,
+      defaultPercentage: (json['percentage'] as num?)?.toDouble() ?? (json['default_percentage'] as num?)?.toDouble(),
       sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
     );
   }

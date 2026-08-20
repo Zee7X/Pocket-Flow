@@ -11,6 +11,7 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/categories_rules/presentation/categories_rules_page.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/debts_savings/presentation/debts_savings_page.dart';
+import '../features/reports/presentation/monthly_reports_page.dart';
 import '../features/salary_allocation/presentation/salary_allocation_page.dart';
 import '../features/transactions/presentation/transactions_page.dart';
 
@@ -23,6 +24,7 @@ class AppRoutes {
   static const transactions = '/transactions';
   static const debtsSavings = '/debts-savings';
   static const categoriesRules = '/categories-rules';
+  static const reports = '/reports';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -54,6 +56,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.register,
         name: 'register',
         builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.reports,
+        name: 'reports',
+        builder: (context, state) => const MonthlyReportsPage(),
       ),
 
       // ── Main App Shell with Bottom Navigation ──────────────────────────────

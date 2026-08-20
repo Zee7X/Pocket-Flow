@@ -35,103 +35,104 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.surfaceDark,
+      scrollable: true,
+      backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        side: const BorderSide(color: AppTheme.borderDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+        side: const BorderSide(color: AppTheme.borderLightSubtle),
       ),
       title: Text(
         'Setor / Tarik Tabungan',
         style: GoogleFonts.plusJakartaSans(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppTheme.textDarkPrimary,
         ),
       ),
       content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Target: ${widget.goal.name}',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                color: AppTheme.textDarkSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Deposit or Withdrawal switch
-            Row(
-              children: [
-                Expanded(
-                  child: ChoiceChip(
-                    label: Center(child: Text('Setor Dana', style: GoogleFonts.dmSans())),
-                    selected: _type == SavingsTransactionType.deposit,
-                    selectedColor: AppTheme.tertiary.withValues(alpha: 0.25),
-                    labelStyle: TextStyle(
-                      color: _type == SavingsTransactionType.deposit
-                          ? AppTheme.tertiary
-                          : AppTheme.textDarkMuted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    onSelected: (v) {
-                      if (v) setState(() => _type = SavingsTransactionType.deposit);
-                    },
-                  ),
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Target: ${widget.goal.name}',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: AppTheme.textDarkSecondary,
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ChoiceChip(
-                    label: Center(child: Text('Tarik Dana', style: GoogleFonts.dmSans())),
-                    selected: _type == SavingsTransactionType.withdrawal,
-                    selectedColor: AppTheme.warning.withValues(alpha: 0.25),
-                    labelStyle: TextStyle(
-                      color: _type == SavingsTransactionType.withdrawal
-                          ? AppTheme.warning
-                          : AppTheme.textDarkMuted,
-                      fontWeight: FontWeight.w600,
+              ),
+              const SizedBox(height: 14),
+
+              // Deposit or Withdrawal switch
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: Center(child: Text('Setor Dana', style: GoogleFonts.dmSans())),
+                      selected: _type == SavingsTransactionType.deposit,
+                      selectedColor: AppTheme.tertiary.withValues(alpha: 0.25),
+                      labelStyle: TextStyle(
+                        color: _type == SavingsTransactionType.deposit
+                            ? AppTheme.tertiary
+                            : AppTheme.textDarkMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onSelected: (v) {
+                        if (v) setState(() => _type = SavingsTransactionType.deposit);
+                      },
                     ),
-                    onSelected: (v) {
-                      if (v) setState(() => _type = SavingsTransactionType.withdrawal);
-                    },
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: Center(child: Text('Tarik Dana', style: GoogleFonts.dmSans())),
+                      selected: _type == SavingsTransactionType.withdrawal,
+                      selectedColor: AppTheme.warning.withValues(alpha: 0.25),
+                      labelStyle: TextStyle(
+                        color: _type == SavingsTransactionType.withdrawal
+                            ? AppTheme.warning
+                            : AppTheme.textDarkMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onSelected: (v) {
+                        if (v) setState(() => _type = SavingsTransactionType.withdrawal);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _amountCtrl,
+                keyboardType: TextInputType.number,
+                style: AppTheme.monoCurrency(fontSize: 16),
+                decoration: const InputDecoration(
+                  labelText: 'Nominal (Rp)',
+                  prefixText: 'Rp ',
                 ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            TextFormField(
-              controller: _amountCtrl,
-              keyboardType: TextInputType.number,
-              style: AppTheme.monoCurrency(fontSize: 16),
-              decoration: const InputDecoration(
-                labelText: 'Nominal (Rp)',
-                prefixText: 'Rp ',
+                validator: (v) {
+                  final clean = v?.replaceAll('.', '') ?? '';
+                  final val = int.tryParse(clean);
+                  if (val == null || val <= 0) return 'Nominal harus > 0';
+                  return null;
+                },
               ),
-              validator: (v) {
-                final clean = v?.replaceAll('.', '') ?? '';
-                final val = int.tryParse(clean);
-                if (val == null || val <= 0) return 'Nominal harus > 0';
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
+              const SizedBox(height: 14),
 
-            TextFormField(
-              controller: _noteCtrl,
-              style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
-              decoration: const InputDecoration(
-                labelText: 'Catatan (opsional)',
-                hintText: 'misal: Sisihan bonus',
+              TextFormField(
+                controller: _noteCtrl,
+                style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'Catatan (opsional)',
+                  hintText: 'misal: Sisihan bonus',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),

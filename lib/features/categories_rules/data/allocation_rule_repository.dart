@@ -55,6 +55,43 @@ class AllocationRuleRepository {
     return AllocationRule.fromJson(res);
   }
 
+  /// Update existing allocation rule
+  Future<AllocationRule> updateAllocationRule({
+    required String id,
+    required String categoryId,
+    required String name,
+    required AllocationType allocationType,
+    int fixedAmount = 0,
+    double? percentage,
+    PercentageBase percentageBase = PercentageBase.remaining,
+    int? minAmount,
+    int? maxAmount,
+    int priority = 1,
+    bool isRequired = false,
+  }) async {
+    final map = <String, dynamic>{
+      'category_id': categoryId,
+      'name': name.trim(),
+      'allocation_type': allocationType.toDbString(),
+      'fixed_amount': fixedAmount,
+      'percentage': percentage,
+      'percentage_base': percentageBase.toDbString(),
+      'min_amount': minAmount,
+      'max_amount': maxAmount,
+      'priority': priority,
+      'is_required': isRequired,
+    };
+
+    final res = await _client
+        .from('pf_allocation_rules')
+        .update(map)
+        .eq('id', id)
+        .eq('user_id', _userId)
+        .select('*, pf_categories(name)')
+        .single();
+    return AllocationRule.fromJson(res);
+  }
+
   /// Toggle rule active status
   Future<void> toggleActive(String ruleId, bool isActive) async {
     await _client

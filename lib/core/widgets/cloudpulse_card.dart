@@ -4,41 +4,38 @@ import '../../app/theme.dart';
 
 class CloudPulseCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsetsGeometry padding;
-  final Color? color;
-  final Color? borderColor;
-  final double? borderRadius;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
-  final bool hasGlow;
+  final Color? backgroundColor;
+  final Border? border;
+  final double? borderRadius;
+  final List<BoxShadow>? customShadow;
 
   const CloudPulseCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.color,
-    this.borderColor,
-    this.borderRadius,
+    this.margin,
     this.onTap,
-    this.hasGlow = false,
+    this.backgroundColor,
+    this.border,
+    this.borderRadius,
+    this.customShadow,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cardContent = Container(
+    final radius = borderRadius ?? AppTheme.radiusLarge;
+
+    Widget card = Container(
+      margin: margin,
       padding: padding,
       decoration: BoxDecoration(
-        color: color ?? AppTheme.surfaceDark,
-        borderRadius: BorderRadius.circular(borderRadius ?? AppTheme.radiusLarge),
-        border: Border.all(color: borderColor ?? AppTheme.borderDark),
-        boxShadow: hasGlow
-            ? [
-                BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
+        color: backgroundColor ?? AppTheme.surfaceLight,
+        borderRadius: BorderRadius.circular(radius),
+        border: border ?? Border.all(color: AppTheme.borderLightSubtle),
+        boxShadow: customShadow ?? AppTheme.cardShadow,
       ),
       child: child,
     );
@@ -46,14 +43,15 @@ class CloudPulseCard extends StatelessWidget {
     if (onTap != null) {
       return Material(
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(radius),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(borderRadius ?? AppTheme.radiusLarge),
-          child: cardContent,
+          borderRadius: BorderRadius.circular(radius),
+          child: card,
         ),
       );
     }
 
-    return cardContent;
+    return card;
   }
 }

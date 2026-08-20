@@ -5,11 +5,19 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme.dart';
 import '../providers/categories_rules_provider.dart';
 
-class TemplatePickerDialog extends ConsumerWidget {
+class TemplatePickerDialog extends ConsumerStatefulWidget {
   const TemplatePickerDialog({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TemplatePickerDialog> createState() =>
+      _TemplatePickerDialogState();
+}
+
+class _TemplatePickerDialogState extends ConsumerState<TemplatePickerDialog> {
+  String? _applyingKey;
+
+  @override
+  Widget build(BuildContext context) {
     final templatesAsync = ref.watch(categoryTemplatesProvider);
 
     return AlertDialog(
@@ -38,13 +46,18 @@ class TemplatePickerDialog extends ConsumerWidget {
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (ctx, i) {
                 final group = groups[i];
+                final isApplying = _applyingKey == group.key;
+
                 return Container(
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceDarkAlt,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(color: AppTheme.borderDark),
+                    border: Border.all(
+                      color: isApplying ? AppTheme.primary : AppTheme.borderDark,
+                    ),
                   ),
                   child: ListTile(
+                    enabled: _applyingKey == null,
                     title: Text(
                       group.name,
                       style: GoogleFonts.plusJakartaSans(
@@ -60,23 +73,18 @@ class TemplatePickerDialog extends ConsumerWidget {
                         color: AppTheme.textDarkSecondary,
                       ),
                     ),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded,
-                        size: 14, color: AppTheme.primary),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await ref
-                          .read(categoriesProvider.notifier)
-                          .applyTemplate(group.key);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Template "${group.name}" berhasil diterapkan!',
-                            ),
+                    trailing: isApplying
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: AppTheme.primary,
                           ),
-                        );
-                      }
-                    },
+                    onTap: () => _apply(group.key, group.name),
                   ),
                 );
               },
@@ -86,10 +94,30 @@ class TemplatePickerDialog extends ConsumerWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _applyingKey == null ? () => Navigator.pop(context) : null,
           child: const Text('Batal'),
         ),
       ],
     );
+  }
+
+  Future<void> _apply(String key, String name) async {
+    setState(() => _applyingKey = key);
+    try {
+      await ref.read(categoriesProvider.notifier).applyTemplate(key);
+      if (!mounted) return;
+      Navigator.pop(context);
+      AppTheme.showSuccessSnackBar(
+        context,
+        'Template "$name" berhasil diterapkan!',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _applyingKey = null);
+      AppTheme.showErrorSnackBar(
+        context,
+        'Gagal menerapkan template: $e',
+      );
+    }
   }
 }

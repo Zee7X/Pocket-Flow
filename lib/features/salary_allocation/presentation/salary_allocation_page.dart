@@ -17,7 +17,8 @@ class SalaryAllocationPage extends ConsumerStatefulWidget {
   const SalaryAllocationPage({super.key});
 
   @override
-  ConsumerState<SalaryAllocationPage> createState() => _SalaryAllocationPageState();
+  ConsumerState<SalaryAllocationPage> createState() =>
+      _SalaryAllocationPageState();
 }
 
 class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
@@ -51,7 +52,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
       appBar: AppBar(
         title: Text(
           'Alokasi Gaji',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
         ),
       ),
       body: SafeArea(
@@ -72,7 +73,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                   'Riwayat Gajian & Alokasi',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: AppTheme.textDarkPrimary,
                   ),
                 ),
@@ -89,8 +90,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
 
   Widget _buildSalaryInputCard(bool isLoading) {
     return CloudPulseCard(
-      hasGlow: true,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       child: Form(
         key: _formKey,
         child: Column(
@@ -99,82 +99,177 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    color: AppTheme.pastelBlue,
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.payments_rounded,
-                      color: AppTheme.primary, size: 20),
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: AppTheme.primary,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Input Gajian Masuk',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textDarkPrimary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Input Gajian Masuk',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textDarkPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Simulasikan & kunci alokasi budget bulanan',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppTheme.textDarkSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
+            // Salary Amount Input
             TextFormField(
               controller: _salaryCtrl,
               keyboardType: TextInputType.number,
               style: AppTheme.monoCurrency(fontSize: 18),
               decoration: const InputDecoration(
-                labelText: 'Jumlah Gaji / Penghasilan',
-                hintText: '5000000',
+                labelText: 'Nominal Gaji Bersih (Take Home Pay)',
+                hintText: 'misal: 8.500.000',
                 prefixText: 'Rp ',
               ),
               validator: (v) {
-                final clean = v?.replaceAll('.', '').replaceAll(',', '') ?? '';
-                final val = int.tryParse(clean);
-                if (val == null || val <= 0) return 'Masukkan nominal gaji > 0';
+                if (v == null || v.isEmpty) return 'Nominal gaji wajib diisi';
+                final clean = v.replaceAll('.', '').replaceAll(',', '');
+                final amount = int.tryParse(clean);
+                if (amount == null || amount <= 0) {
+                  return 'Masukkan nominal yang valid';
+                }
                 return null;
               },
             ),
             const SizedBox(height: 14),
 
-            // Date picker & Period selector
+            // Period Selection (Month & Year)
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickDate,
-                    icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                    label: Text(
-                      DateFormat('dd MMM yyyy').format(_selectedDate),
-                      style: GoogleFonts.dmSans(fontSize: 13),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 44),
-                      side: const BorderSide(color: AppTheme.borderDark),
-                      foregroundColor: AppTheme.textDarkPrimary,
-                    ),
+                  flex: 3,
+                  child: DropdownButtonFormField<int>(
+                    isExpanded: true,
+                    initialValue: _selectedMonth,
+                    decoration: const InputDecoration(labelText: 'Bulan'),
+                    items: List.generate(12, (i) => i + 1).map((m) {
+                      const months = [
+                        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+                      ];
+                      return DropdownMenuItem(
+                        value: m,
+                        child: Text(
+                          months[m - 1],
+                          style: GoogleFonts.dmSans(),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (v) => setState(() => _selectedMonth = v!),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: DropdownButtonFormField<int>(
+                    isExpanded: true,
+                    initialValue: _selectedYear,
+                    decoration: const InputDecoration(labelText: 'Tahun'),
+                    items: [2024, 2025, 2026, 2027].map((y) {
+                      return DropdownMenuItem(
+                        value: y,
+                        child: Text(
+                          '$y',
+                          style: GoogleFonts.dmSans(),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (v) => setState(() => _selectedYear = v!),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
-            ElevatedButton(
-              onPressed: isLoading ? null : _previewAllocation,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                minimumSize: const Size(double.infinity, 48),
+            // Date Received Picker
+            InkWell(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (picked != null) {
+                  setState(() => _selectedDate = picked);
+                }
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Tanggal Gajian Diterima',
+                  suffixIcon: Icon(Icons.calendar_today_rounded, size: 18),
+                ),
+                child: Text(
+                  DateFormat('dd MMMM yyyy').format(_selectedDate),
+                  style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
+                ),
               ),
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text('Preview Alokasi Otomatis'),
+            ),
+            const SizedBox(height: 20),
+
+            // Submit Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : _previewAllocation,
+                child: isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.calculate_rounded, size: 18),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Preview Alokasi Otomatis',
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ],
         ),
@@ -186,34 +281,42 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
     return historyAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
-      data: (entries) {
-        if (entries.isEmpty) {
+      data: (history) {
+        if (history.isEmpty) {
           return const EmptyStateWidget(
             icon: Icons.history_rounded,
             title: 'Belum Ada Riwayat',
-            description: 'Penghasilan yang dialokasikan akan dicatat di sini.',
+            description:
+                'Alokasi gajian yang kamu masukkan akan tercatat rapi di sini.',
           );
         }
 
         return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: entries.length,
+          itemCount: history.length,
           separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (ctx, i) {
-            final entry = entries[i];
+            final entry = history[i];
+            final periodStr = DateFormat('MMMM yyyy')
+                .format(DateTime(entry.periodYear, entry.periodMonth));
+
             return CloudPulseCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: AppTheme.success.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      color: AppTheme.pastelBlue,
+                      shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check_circle_outline_rounded,
-                        color: AppTheme.success, size: 20),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppTheme.primary,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -221,18 +324,19 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Gaji ${_getMonthName(entry.periodMonth)} ${entry.periodYear}',
+                          periodStr,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
                             color: AppTheme.textDarkPrimary,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
-                          DateFormat('dd MMMM yyyy').format(entry.salaryDate),
+                          'Diterima: ${DateFormat('dd MMM yyyy').format(entry.salaryDate)}',
                           style: GoogleFonts.dmSans(
                             fontSize: 12,
-                            color: AppTheme.textDarkSecondary,
+                            color: AppTheme.textDarkMuted,
                           ),
                         ),
                       ],
@@ -243,6 +347,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                     style: AppTheme.monoCurrency(
                       color: AppTheme.primary,
                       fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -254,29 +359,16 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
     );
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-        _selectedMonth = picked.month;
-        _selectedYear = picked.year;
-      });
-    }
-  }
-
   Future<void> _previewAllocation() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = int.parse(_salaryCtrl.text.replaceAll('.', '').replaceAll(',', ''));
+    final clean = _salaryCtrl.text.replaceAll('.', '').replaceAll(',', '');
+    final totalSalary = int.parse(clean);
 
-    final result = await ref.read(salaryAllocationActionProvider.notifier).preview(
-          salaryAmount: amount,
+    final result = await ref
+        .read(salaryAllocationActionProvider.notifier)
+        .preview(
+          salaryAmount: totalSalary,
           salaryDate: _selectedDate,
           periodMonth: _selectedMonth,
           periodYear: _selectedYear,
@@ -286,38 +378,28 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => AllocationPreviewSheet(
+        backgroundColor: AppTheme.surfaceLight,
+        builder: (_) => AllocationPreviewSheet(
           result: result,
           onConfirm: () async {
-            Navigator.pop(ctx);
-            final execResult = await ref
+            Navigator.pop(context);
+            await ref
                 .read(salaryAllocationActionProvider.notifier)
                 .execute(
-                  salaryAmount: amount,
+                  salaryAmount: totalSalary,
                   salaryDate: _selectedDate,
                   periodMonth: _selectedMonth,
                   periodYear: _selectedYear,
                 );
-            if (execResult != null && mounted) {
-              _salaryCtrl.clear();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('✅ Gaji berhasil dialokasikan ke budget bulanan!'),
-                ),
+            if (mounted) {
+              AppTheme.showSuccessSnackBar(
+                context,
+                'Alokasi gaji berhasil dikunci & diterapkan!',
               );
             }
           },
         ),
       );
     }
-  }
-
-  String _getMonthName(int month) {
-    const months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-    ];
-    return months[month - 1];
   }
 }

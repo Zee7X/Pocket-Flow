@@ -17,6 +17,9 @@ import 'package:pocket_flow/features/debts_savings/domain/debt.dart';
 import 'package:pocket_flow/features/debts_savings/domain/savings_goal.dart';
 import 'package:pocket_flow/features/debts_savings/presentation/debts_savings_page.dart';
 import 'package:pocket_flow/features/debts_savings/presentation/providers/debts_savings_provider.dart';
+import 'package:pocket_flow/features/reports/domain/monthly_report.dart';
+import 'package:pocket_flow/features/reports/presentation/monthly_reports_page.dart';
+import 'package:pocket_flow/features/reports/presentation/providers/reports_provider.dart';
 import 'package:pocket_flow/features/salary_allocation/data/salary_repository.dart';
 import 'package:pocket_flow/features/salary_allocation/domain/monthly_budget.dart';
 import 'package:pocket_flow/features/salary_allocation/domain/salary_allocation_result.dart';
@@ -150,6 +153,31 @@ Widget createTestApp(
       allocationRulesProvider.overrideWith(() => _MockRulesNotifier()),
       debtsProvider.overrideWith(() => _MockDebtsNotifier()),
       savingsGoalsProvider.overrideWith(() => _MockSavingsNotifier()),
+      monthlyReportProvider.overrideWith((ref) async => const MonthlyReport(
+            month: 8,
+            year: 2026,
+            totalIncome: 5000000,
+            totalExpense: 1100000,
+            totalSavings: 1000000,
+            totalDebtPayment: 400000,
+            netCashFlow: 3500000,
+            savingsRate: 20.0,
+            categoryBreakdown: [
+              CategorySpendingSummary(
+                categoryName: 'Makan',
+                allocatedAmount: 1000000,
+                spentAmount: 250000,
+                percentageOfTotalSpent: 0.23,
+              ),
+              CategorySpendingSummary(
+                categoryName: 'Sewa Kos',
+                allocatedAmount: 850000,
+                spentAmount: 850000,
+                percentageOfTotalSpent: 0.77,
+              ),
+            ],
+            rawBudgets: [],
+          )),
       ...extraOverrides,
     ],
     child: MaterialApp(
@@ -280,9 +308,9 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('PocketFlow'), findsOneWidget);
+      expect(find.byType(Image), findsWidgets);
       expect(find.text('Selamat datang\nkembali 👋'), findsOneWidget);
-      expect(find.text('Masuk'), findsOneWidget);
+      expect(find.text('Masuk'), findsWidgets);
     });
 
     testWidgets('2. RegisterPage renders & responsive', (tester) async {
@@ -296,8 +324,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('Buat Akun'), findsWidgets);
-      expect(find.text('Mulai atur\nkeuanganmu 🚀'), findsOneWidget);
+      expect(find.byType(Image), findsWidgets);
+      expect(find.text('Mulai atur alokasi\nkeuanganmu ✨'), findsOneWidget);
     });
 
     testWidgets('3. DashboardPage renders Safe Spending and Category Budgets', (tester) async {
@@ -385,6 +413,56 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Safe Spending Hari Ini'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('9. Keyboard Open on Mobile (Bottom Inset 340px) - LoginPage & RegisterPage', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetViewInsets();
+      });
+
+      await tester.pumpWidget(createTestApp(
+        const LoginPage(),
+        authState: const domain.AuthUnauthenticated(),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Masuk'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('10. Keyboard Open on Mobile - Salary Allocation Page', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetViewInsets();
+      });
+
+      await tester.pumpWidget(createTestApp(const SalaryAllocationPage()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Input Gajian Masuk'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('11. MonthlyReportsPage renders cash flow & savings rate', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(createTestApp(const MonthlyReportsPage()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Laporan Keuangan'), findsOneWidget);
+      expect(find.text('Arus Kas Bersih (Net Cash Flow)'), findsOneWidget);
+      expect(find.text('Savings Rate'), findsOneWidget);
+      expect(find.text('Rincian Pengeluaran per Kategori'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

@@ -19,7 +19,8 @@ class CategoriesRulesPage extends ConsumerStatefulWidget {
   const CategoriesRulesPage({super.key});
 
   @override
-  ConsumerState<CategoriesRulesPage> createState() => _CategoriesRulesPageState();
+  ConsumerState<CategoriesRulesPage> createState() =>
+      _CategoriesRulesPageState();
 }
 
 class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
@@ -40,8 +41,8 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
 
   @override
   Widget build(BuildContext context) {
-    final categoriesAsync = ref.watch(categoriesProvider);
     final rulesAsync = ref.watch(allocationRulesProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -52,8 +53,28 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
         actions: [
           IconButton(
             icon: const Icon(Icons.auto_awesome_rounded, size: 20),
-            tooltip: 'Gunakan Template',
+            tooltip: 'Pilih Template Bawaan',
             onPressed: () => _openTemplatePicker(context),
+          ),
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.pastelBlue,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.borderLightSubtle),
+              ),
+              child: const Icon(Icons.add_rounded,
+                  size: 18, color: AppTheme.primary),
+            ),
+            tooltip: 'Tambah Item',
+            onPressed: () {
+              if (_tabCtrl.index == 0) {
+                _openAddRule(context, categoriesAsync.value ?? []);
+              } else {
+                _openAddCategory(context);
+              }
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -81,17 +102,6 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
             _buildCategoriesTab(categoriesAsync),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (_tabCtrl.index == 0) {
-            _openAddRule(context, categoriesAsync.value ?? []);
-          } else {
-            _openAddCategory(context);
-          }
-        },
-        backgroundColor: AppTheme.primary,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }
@@ -123,100 +133,122 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
             separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (ctx, i) {
               final rule = rules[i];
-              return CloudPulseCard(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    // Priority Badge
-                    Container(
-                      width: 28,
-                      height: 28,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                      ),
-                      child: Text(
-                        '#${rule.priority}',
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: AppTheme.primary,
+              final isZeroOrUnset = (rule.allocationType == AllocationType.fixed ||
+                      rule.allocationType == AllocationType.capped) &&
+                  rule.fixedAmount == 0;
+
+              return InkWell(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                onTap: () => _openEditRule(context, categories, rule),
+                child: CloudPulseCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      // Priority Badge
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        ),
+                        child: Text(
+                          '#${rule.priority}',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppTheme.primary,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
+                      const SizedBox(width: 14),
 
-                    // Rule Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  rule.name,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: rule.isActive
-                                        ? AppTheme.textDarkPrimary
-                                        : AppTheme.textDarkMuted,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (rule.isRequired) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.danger.withValues(alpha: 0.15),
-                                    borderRadius:
-                                        BorderRadius.circular(AppTheme.radiusSmall),
-                                  ),
+                      // Rule Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
                                   child: Text(
-                                    'Wajib',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 10,
-                                      color: AppTheme.danger,
+                                    rule.name,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w600,
+                                      color: rule.isActive
+                                          ? AppTheme.textDarkPrimary
+                                          : AppTheme.textDarkMuted,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (rule.isRequired) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.danger.withValues(alpha: 0.15),
+                                      borderRadius:
+                                          BorderRadius.circular(AppTheme.radiusSmall),
+                                    ),
+                                    child: Text(
+                                      'Wajib',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 10,
+                                        color: AppTheme.danger,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatRuleFormula(rule),
-                            style: GoogleFonts.dmSans(
-                              fontSize: 13,
-                              color: AppTheme.textDarkSecondary,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatRuleFormula(rule),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                color: isZeroOrUnset
+                                    ? AppTheme.primary
+                                    : AppTheme.textDarkSecondary,
+                                fontWeight: isZeroOrUnset
+                                    ? FontWeight.w500
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
 
-                    // Active Switch & Delete
-                    Switch(
-                      value: rule.isActive,
-                      activeThumbColor: AppTheme.primary,
-                      onChanged: (val) => ref
-                          .read(allocationRulesProvider.notifier)
-                          .toggleActive(rule.id, val),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          size: 18, color: AppTheme.textDarkMuted),
-                      onPressed: () => ref
-                          .read(allocationRulesProvider.notifier)
-                          .deleteRule(rule.id),
-                    ),
-                  ],
+                      // Edit Button
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined,
+                            size: 18, color: AppTheme.textDarkMuted),
+                        tooltip: 'Atur / Edit Aturan',
+                        onPressed: () => _openEditRule(context, categories, rule),
+                      ),
+
+                      // Active Switch & Delete
+                      Switch(
+                        value: rule.isActive,
+                        activeThumbColor: AppTheme.primary,
+                        onChanged: (val) => ref
+                            .read(allocationRulesProvider.notifier)
+                            .toggleActive(rule.id, val),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded,
+                            size: 18, color: AppTheme.textDarkMuted),
+                        tooltip: 'Hapus Aturan',
+                        onPressed: () => ref
+                            .read(allocationRulesProvider.notifier)
+                            .deleteRule(rule.id),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -273,8 +305,8 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
                           Text(
                             cat.name,
                             style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              fontSize: 14,
                               color: AppTheme.textDarkPrimary,
                             ),
                           ),
@@ -291,6 +323,7 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
                     IconButton(
                       icon: const Icon(Icons.delete_outline_rounded,
                           size: 18, color: AppTheme.textDarkMuted),
+                      tooltip: 'Hapus Kategori',
                       onPressed: () => ref
                           .read(categoriesProvider.notifier)
                           .deleteCategory(cat.id),
@@ -308,15 +341,24 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
   String _formatRuleFormula(AllocationRule rule) {
     switch (rule.allocationType) {
       case AllocationType.fixed:
-        return 'Nominal: ${rule.fixedAmount.toRupiah}';
+        return rule.fixedAmount > 0
+            ? 'Nominal: ${rule.fixedAmount.toRupiah}'
+            : 'Rp0 (Ketuk untuk atur nominal)';
       case AllocationType.percentage:
-        return '${rule.percentage}% dari ${_getBaseLabel(rule.percentageBase)}';
+        final pct = (rule.percentage ?? 0).toStringAsFixed(0);
+        final base = _getBaseLabel(rule.percentageBase);
+        return (rule.percentage ?? 0) > 0
+            ? '$pct% dari $base'
+            : '0% dari $base (Ketuk untuk atur %)';
       case AllocationType.capped:
-        return 'Maksimal ${rule.fixedAmount.toRupiah}';
+        return rule.fixedAmount > 0
+            ? 'Maksimal ${rule.fixedAmount.toRupiah}'
+            : 'Maksimal Rp0 (Ketuk untuk atur batas)';
       case AllocationType.remaining:
-        return 'Semua sisa penghasilan';
+        return 'Semua sisa penghasilan (100%)';
       case AllocationType.proportional:
-        return 'Proporsional ${rule.percentage}%';
+        final pct = (rule.percentage ?? 0).toStringAsFixed(0);
+        return 'Proporsional $pct%';
     }
   }
 
@@ -380,14 +422,23 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
 
   void _openAddRule(BuildContext context, List<Category> categories) {
     if (categories.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Buat kategori terlebih dahulu')),
-      );
+      AppTheme.showErrorSnackBar(context, 'Buat kategori terlebih dahulu');
       return;
     }
     showDialog(
       context: context,
       builder: (_) => AddRuleDialog(categories: categories),
+    );
+  }
+
+  void _openEditRule(
+      BuildContext context, List<Category> categories, AllocationRule rule) {
+    showDialog(
+      context: context,
+      builder: (_) => AddRuleDialog(
+        categories: categories,
+        initialRule: rule,
+      ),
     );
   }
 }

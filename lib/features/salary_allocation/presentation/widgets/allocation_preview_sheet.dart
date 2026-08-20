@@ -20,9 +20,14 @@ class AllocationPreviewSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       decoration: const BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: AppTheme.surfaceLight,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -35,7 +40,7 @@ class AllocationPreviewSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.borderDark,
+                color: AppTheme.borderLight,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -165,7 +170,7 @@ class AllocationPreviewSheet extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceDarkAlt,
+              color: AppTheme.surfaceLightAlt,
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             ),
             child: Row(

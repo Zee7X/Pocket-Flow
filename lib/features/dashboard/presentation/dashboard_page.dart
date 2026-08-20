@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
@@ -18,58 +19,112 @@ import '../../transactions/domain/transaction.dart';
 import '../../transactions/presentation/widgets/add_transaction_dialog.dart';
 import 'providers/dashboard_provider.dart';
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  bool _isBalanceVisible = true;
+
+  @override
+  Widget build(BuildContext context) {
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final period = ref.watch(selectedPeriodProvider);
+    final authState = ref.watch(authProvider);
 
     final String greetingName = switch (authState) {
-      domain.AuthAuthenticated(:final email) =>
-        email != null ? email.split('@').first : 'User',
+      domain.AuthAuthenticated(:final displayName, :final email) =>
+        displayName != null && displayName.trim().isNotEmpty
+            ? displayName.trim()
+            : (email != null ? email.split('@').first : 'User'),
       _ => 'User',
     };
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              'Halo, $greetingName 👋',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textDarkPrimary,
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: AppTheme.accentGradient,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                greetingName.isNotEmpty ? greetingName[0].toUpperCase() : 'U',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 15,
+                ),
               ),
             ),
-            Text(
-              _getCurrentPeriod(period),
-              style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: AppTheme.textDarkMuted,
-                fontWeight: FontWeight.w400,
-              ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Halo, $greetingName 👋',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textDarkPrimary,
+                  ),
+                ),
+                Text(
+                  _getCurrentPeriod(period),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: AppTheme.textDarkSecondary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout_rounded, size: 20),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceLight,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.borderLightSubtle),
+              ),
+              child: const Icon(Icons.assessment_rounded,
+                  size: 18, color: AppTheme.primary),
+            ),
+            tooltip: 'Laporan Keuangan',
+            onPressed: () => context.push(AppRoutes.reports),
+          ),
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceLight,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.borderLightSubtle),
+              ),
+              child: const Icon(Icons.logout_rounded,
+                  size: 18, color: AppTheme.textDarkSecondary),
+            ),
             tooltip: 'Logout',
             onPressed: () => ref.read(authProvider.notifier).signOut(),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: ResponsiveCenter(
             maxWidth: 800,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: summaryAsync.when(
               loading: () => const Center(
                 child: Padding(
@@ -82,72 +137,25 @@ class DashboardPage extends ConsumerWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── 1. Hero Safe Spending Today Card ───────────────────
-                    _buildSafeSpendingCard(context, summary),
-
-                    const SizedBox(height: 18),
-
-                    // ── 2. Quick Overview Cards ────────────────────────────
-                    _buildOverviewRow(summary),
+                    // ── 1. Hero Card: Royal Blue Neo-Banking Card ──────────
+                    _buildHeroCard(summary, greetingName),
 
                     const SizedBox(height: 20),
 
-                    // ── 3. Quick Action Buttons ────────────────────────────
-                    _buildQuickActions(context),
+                    // ── 2. Two-Column Stats Overview ─────────────────────────
+                    _buildQuickStats(summary),
 
                     const SizedBox(height: 24),
 
-                    // ── 4. Budget per Kategori ─────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Budget Kategori Bulan Ini',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textDarkPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => context.go(AppRoutes.salary),
-                          child: const Text('Atur Gaji'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    _buildCategoryBudgetList(context, summary.categoryBudgets),
+                    // ── 3. Category Budgets Tracker ──────────────────────────
+                    _buildCategoryBudgets(summary.categoryBudgets),
 
                     const SizedBox(height: 24),
 
-                    // ── 5. Transaksi Terakhir ──────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Transaksi Terkini',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textDarkPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => context.go(AppRoutes.transactions),
-                          child: const Text('Lihat Semua'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    _buildRecentTransactions(context, summary.recentTransactions),
+                    // ── 4. Recent Transactions ──────────────────────────────
+                    _buildRecentTransactions(summary.recentTransactions),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                   ],
                 );
               },
@@ -158,170 +166,242 @@ class DashboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSafeSpendingCard(BuildContext context, DashboardSummary summary) {
+  // ─── 1. Royal Blue Hero Card (Matching Reference Image) ────────────────────
+  Widget _buildHeroCard(DashboardSummary summary, String userName) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primary.withValues(alpha: 0.22),
-            AppTheme.secondary.withValues(alpha: 0.12),
-          ],
-        ),
+        gradient: AppTheme.heroGradient,
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: AppTheme.heroShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          // Greeting & Status Tag
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.success,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Safe Spending Hari Ini',
-                      style: GoogleFonts.dmSans(
-                        color: AppTheme.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
+              Expanded(
+                child: Text(
+                  'Safe Spending Hari Ini',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                'Sisa ${summary.daysRemainingInMonth} hari',
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  color: AppTheme.textDarkSecondary,
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => setState(() => _isBalanceVisible = !_isBalanceVisible),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isBalanceVisible
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 8),
+
+          // Large Balance Number
           Text(
-            summary.safeSpendingToday.toRupiah,
+            _isBalanceVisible
+                ? summary.safeSpendingToday.toRupiah
+                : 'Rp ••••••••',
             style: AppTheme.monoCurrency(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              color: AppTheme.textDarkPrimary,
+              color: Colors.white,
             ),
           ),
-          const SizedBox(height: 6),
+
+          const SizedBox(height: 4),
+
+          // Days remaining subtitle
           Text(
-            'Maksimal pengeluaran aman hari ini agar budget bulanan tetap terkontrol.',
+            summary.totalAllocated == 0
+                ? 'Belum ada alokasi gaji bulan ini'
+                : '${summary.daysRemainingInMonth} hari tersisa • Sisa Budget: ${summary.remainingBudget.toRupiah}',
             style: GoogleFonts.dmSans(
-              fontSize: 13,
-              color: AppTheme.textDarkSecondary,
-              height: 1.4,
+              fontSize: 12,
+              color: Colors.white.withValues(alpha: 0.8),
             ),
+          ),
+
+          const SizedBox(height: 22),
+
+          // 4 Circular Quick Action Buttons (Transfer, Add, Top Up, Pay Bills style)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: _buildCircularAction(
+                  icon: Icons.arrow_outward_rounded,
+                  label: 'Catat Keluar',
+                  onTap: () =>
+                      _openAddTransaction(context, TransactionType.expense),
+                ),
+              ),
+              Expanded(
+                child: _buildCircularAction(
+                  icon: Icons.add_rounded,
+                  label: 'Catat Masuk',
+                  onTap: () =>
+                      _openAddTransaction(context, TransactionType.income),
+                ),
+              ),
+              Expanded(
+                child: _buildCircularAction(
+                  icon: Icons.account_balance_wallet_rounded,
+                  label: 'Alokasi Gaji',
+                  onTap: () => context.go(AppRoutes.salary),
+                ),
+              ),
+              Expanded(
+                child: _buildCircularAction(
+                  icon: Icons.pie_chart_rounded,
+                  label: 'Laporan',
+                  onTap: () => context.push(AppRoutes.reports),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOverviewRow(DashboardSummary summary) {
+  Widget _buildCircularAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.25),
+                width: 1,
+              ),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 2. Quick Stats Overview (Allocated vs Spent) ──────────────────────────
+  Widget _buildQuickStats(DashboardSummary summary) {
     return Row(
       children: [
         Expanded(
           child: CloudPulseCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Text(
-                  'Total Budget',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: AppTheme.textDarkMuted,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.pastelGreen,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                   ),
+                  child: const Icon(Icons.arrow_downward_rounded,
+                      color: AppTheme.success, size: 18),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  summary.totalAllocated.toRupiahCompact,
-                  style: AppTheme.monoCurrency(fontSize: 15),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: CloudPulseCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Terpakai',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: AppTheme.textDarkMuted,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  summary.totalSpent.toRupiahCompact,
-                  style: AppTheme.monoCurrency(
-                    fontSize: 15,
-                    color: AppTheme.danger,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Alokasi',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: AppTheme.textDarkSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        summary.totalAllocated.toRupiahCompact,
+                        style: AppTheme.monoCurrency(fontSize: 15),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: CloudPulseCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Text(
-                  'Sisa Uang',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: AppTheme.textDarkMuted,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.pastelRed,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                   ),
+                  child: const Icon(Icons.arrow_outward_rounded,
+                      color: AppTheme.danger, size: 18),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  summary.remainingBudget.toRupiahCompact,
-                  style: AppTheme.monoCurrency(
-                    fontSize: 15,
-                    color: AppTheme.success,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Terpakai',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: AppTheme.textDarkSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        summary.totalSpent.toRupiahCompact,
+                        style: AppTheme.monoCurrency(fontSize: 15),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -332,173 +412,298 @@ class DashboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Row(
+  // ─── 3. Category Budgets Tracker (Card Style Matching Reference) ─────────
+  Widget _buildCategoryBudgets(List<MonthlyBudget> budgets) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => const AddTransactionDialog(),
-              );
-            },
-            icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
-            label: const Text('Catat Pengeluaran'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              minimumSize: const Size(double.infinity, 42),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => context.go(AppRoutes.salary),
-            icon: const Icon(Icons.tune_rounded, size: 16),
-            label: const Text('Alokasi Gaji'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 42),
-              side: const BorderSide(color: AppTheme.primary),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryBudgetList(
-      BuildContext context, List<MonthlyBudget> budgets) {
-    if (budgets.isEmpty) {
-      return CloudPulseCard(
-        padding: const EdgeInsets.all(18),
-        child: Row(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Icon(Icons.info_outline_rounded,
-                color: AppTheme.primary, size: 20),
-            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Belum ada alokasi budget untuk bulan ini. Masukkan gaji di menu Alokasi Gaji.',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: AppTheme.textDarkSecondary,
+                'Budget Kategori Bulan Ini',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDarkPrimary,
                 ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go(AppRoutes.categoriesRules),
+              child: Text(
+                'Lihat Semua',
+                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
           ],
         ),
-      );
-    }
-
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: budgets.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (ctx, i) {
-        final b = budgets[i];
-        return CloudPulseCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        const SizedBox(height: 10),
+        if (budgets.isEmpty)
+          CloudPulseCard(
+            padding: const EdgeInsets.all(20),
+            child: Center(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: Text(
-                      b.categoryName ?? 'Kategori',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textDarkPrimary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  Icon(Icons.tune_rounded, size: 36, color: AppTheme.textDarkMuted),
+                  const SizedBox(height: 8),
                   Text(
-                    '${b.spentAmount.toRupiah} / ${b.allocatedAmount.toRupiah}',
-                    style: AppTheme.monoCurrency(fontSize: 12),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: b.spentPercentage,
-                  minHeight: 5,
-                  backgroundColor: AppTheme.surfaceDarkAlt,
-                  valueColor: AlwaysStoppedAnimation(
-                    b.isOverBudget ? AppTheme.danger : AppTheme.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildRecentTransactions(
-      BuildContext context, List<TransactionModel> transactions) {
-    if (transactions.isEmpty) {
-      return const EmptyStateWidget(
-        icon: Icons.receipt_long_rounded,
-        title: 'Belum Ada Transaksi Bulan Ini',
-        description: 'Setiap pengeluaran yang dicatat akan muncul di sini.',
-      );
-    }
-
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: transactions.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (ctx, i) {
-        final tx = transactions[i];
-        final isExpense = tx.type == TransactionType.expense;
-
-        return CloudPulseCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tx.description ?? tx.categoryName ?? 'Transaksi',
+                    'Belum Ada Budget Kategori',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textDarkPrimary,
                     ),
                   ),
-                  if (tx.categoryName != null)
-                    Text(
-                      tx.categoryName!,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: AppTheme.textDarkMuted,
-                      ),
-                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Input gaji untuk membuat alokasi otomatis',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: AppTheme.textDarkSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => context.go(AppRoutes.salary),
+                    child: const Text('Input Gajian'),
+                  ),
                 ],
               ),
-              Text(
-                '${isExpense ? '-' : '+'}${tx.amount.toRupiah}',
-                style: AppTheme.monoCurrency(
-                  color: isExpense ? AppTheme.danger : AppTheme.success,
-                  fontSize: 13,
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: budgets.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (ctx, i) {
+              final budget = budgets[i];
+              final isOverBudget = budget.isOverBudget;
+              final pct = (budget.spentPercentage * 100).toStringAsFixed(0);
+
+              return CloudPulseCard(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: isOverBudget
+                                ? AppTheme.pastelRed
+                                : AppTheme.pastelBlue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isOverBudget
+                                ? Icons.warning_amber_rounded
+                                : Icons.folder_outlined,
+                            size: 15,
+                            color: isOverBudget
+                                ? AppTheme.danger
+                                : AppTheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            budget.categoryName ?? 'Kategori',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textDarkPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${budget.spentAmount.toRupiah} / ${budget.allocatedAmount.toRupiah}',
+                          style: AppTheme.monoCurrency(fontSize: 11.5),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: budget.spentPercentage.clamp(0.0, 1.0),
+                        minHeight: 6,
+                        backgroundColor: AppTheme.surfaceLightAlt,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isOverBudget
+                              ? AppTheme.danger
+                              : budget.spentPercentage > 0.8
+                                  ? AppTheme.warning
+                                  : AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '$pct% terpakai',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: isOverBudget
+                                ? AppTheme.danger
+                                : AppTheme.textDarkSecondary,
+                            fontWeight: isOverBudget
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isOverBudget
+                                ? 'Over Budget!'
+                                : 'Sisa: ${budget.remainingAmount.toRupiah}',
+                            textAlign: TextAlign.end,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: isOverBudget
+                                  ? AppTheme.danger
+                                  : AppTheme.success,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
-        );
-      },
+      ],
+    );
+  }
+
+  // ─── 4. Recent Transactions ────────────────────────────────────────────────
+  Widget _buildRecentTransactions(List<TransactionModel> transactions) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'Transaksi Terkini',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDarkPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go(AppRoutes.transactions),
+              child: Text(
+                'Lihat Semua',
+                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (transactions.isEmpty)
+          CloudPulseCard(
+            padding: const EdgeInsets.all(24),
+            child: EmptyStateWidget(
+              icon: Icons.receipt_long_outlined,
+              title: 'Belum Ada Transaksi',
+              description: 'Catat pengeluaran harianmu untuk memantau sisa budget.',
+              actionLabel: 'Catat Pengeluaran',
+              onAction: () =>
+                  _openAddTransaction(context, TransactionType.expense),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: transactions.length.clamp(0, 5),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (ctx, i) {
+              final tx = transactions[i];
+              final isExpense = tx.type == TransactionType.expense;
+
+              return CloudPulseCard(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isExpense
+                            ? AppTheme.pastelRed
+                            : AppTheme.pastelGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isExpense
+                            ? Icons.arrow_outward_rounded
+                            : Icons.arrow_downward_rounded,
+                        size: 18,
+                        color: isExpense ? AppTheme.danger : AppTheme.success,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tx.description != null && tx.description!.isNotEmpty
+                                ? tx.description!
+                                : (tx.categoryName ?? (isExpense ? 'Pengeluaran' : 'Pemasukan')),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textDarkPrimary,
+                            ),
+                          ),
+                          Text(
+                            DateFormat('dd MMM yyyy').format(tx.transactionDate),
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: AppTheme.textDarkMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '${isExpense ? '-' : '+'}${tx.amount.toRupiah}',
+                      style: AppTheme.monoCurrency(
+                        fontSize: 14,
+                        color: isExpense ? AppTheme.danger : AppTheme.success,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  void _openAddTransaction(BuildContext context, TransactionType type) {
+    showDialog(
+      context: context,
+      builder: (_) => AddTransactionDialog(initialType: type),
     );
   }
 

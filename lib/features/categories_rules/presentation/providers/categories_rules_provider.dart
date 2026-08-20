@@ -106,6 +106,38 @@ class AllocationRulesNotifier extends AsyncNotifier<List<AllocationRule>> {
     state = AsyncValue.data([...(state.value ?? []), newRule]);
   }
 
+  Future<void> updateRule({
+    required String id,
+    required String categoryId,
+    required String name,
+    required AllocationType allocationType,
+    int fixedAmount = 0,
+    double? percentage,
+    PercentageBase percentageBase = PercentageBase.remaining,
+    int? minAmount,
+    int? maxAmount,
+    int priority = 1,
+    bool isRequired = false,
+  }) async {
+    final updatedRule =
+        await ref.read(allocationRuleRepositoryProvider).updateAllocationRule(
+              id: id,
+              categoryId: categoryId,
+              name: name,
+              allocationType: allocationType,
+              fixedAmount: fixedAmount,
+              percentage: percentage,
+              percentageBase: percentageBase,
+              minAmount: minAmount,
+              maxAmount: maxAmount,
+              priority: priority,
+              isRequired: isRequired,
+            );
+    state = AsyncValue.data(
+      (state.value ?? []).map((r) => r.id == id ? updatedRule : r).toList(),
+    );
+  }
+
   Future<void> toggleActive(String ruleId, bool isActive) async {
     await ref
         .read(allocationRuleRepositoryProvider)

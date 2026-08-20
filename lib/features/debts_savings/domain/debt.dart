@@ -84,17 +84,22 @@ class Debt {
       totalAmount > 0 ? (paidAmount / totalAmount).clamp(0.0, 1.0) : 0.0;
 
   factory Debt.fromJson(Map<String, dynamic> json) {
+    final status = json['status'] as String? ?? 'active';
+    final isPaid = status == 'paid' || ((json['remaining_amount'] as num?)?.toInt() ?? 0) <= 0;
+    final initial = (json['initial_amount'] as num?)?.toInt() ?? (json['total_amount'] as num?)?.toInt() ?? 0;
+    final remaining = (json['remaining_amount'] as num?)?.toInt() ?? 0;
+
     return Debt(
       id: json['id'] as String,
       userId: json['user_id'] as String,
       name: json['name'] as String,
-      debtType: DebtType.fromString(json['debt_type'] as String? ?? 'other'),
-      totalAmount: (json['total_amount'] as num).toInt(),
-      remainingAmount: (json['remaining_amount'] as num).toInt(),
+      debtType: DebtType.fromString(json['note'] as String? ?? 'other'),
+      totalAmount: initial,
+      remainingAmount: remaining,
       minimumPayment: (json['minimum_payment'] as num?)?.toInt() ?? 0,
-      interestRate: (json['interest_rate'] as num?)?.toInt(),
-      dueDay: (json['due_day'] as num?)?.toInt(),
-      isPaid: json['is_paid'] as bool? ?? false,
+      interestRate: null,
+      dueDay: null,
+      isPaid: isPaid,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -103,13 +108,11 @@ class Debt {
     return {
       'user_id': userId,
       'name': name,
-      'debt_type': debtType.toDbString(),
-      'total_amount': totalAmount,
+      'initial_amount': totalAmount,
       'remaining_amount': remainingAmount,
       'minimum_payment': minimumPayment,
-      if (interestRate != null) 'interest_rate': interestRate,
-      if (dueDay != null) 'due_day': dueDay,
-      'is_paid': isPaid,
+      'status': isPaid || remainingAmount <= 0 ? 'paid' : 'active',
+      'note': debtType.toDbString(),
     };
   }
 }

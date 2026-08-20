@@ -16,7 +16,6 @@ class SavingsRepository {
         .from('pf_savings_goals')
         .select()
         .eq('user_id', _userId)
-        .order('is_completed')
         .order('created_at');
     return (res as List).map((json) => SavingsGoal.fromJson(json)).toList();
   }
@@ -37,13 +36,11 @@ class SavingsRepository {
       'goal_type': goalType.toDbString(),
       'target_amount': targetAmount,
       'current_amount': currentAmount,
-      'is_completed': currentAmount >= targetAmount,
+      'is_active': true,
     };
     if (targetDate != null) {
       map['target_date'] = targetDate.toIso8601String().split('T').first;
     }
-    if (icon != null) map['icon'] = icon;
-    if (color != null) map['color'] = color;
 
     final res =
         await _client.from('pf_savings_goals').insert(map).select().single();
@@ -59,11 +56,10 @@ class SavingsRepository {
     String? note,
   }) async {
     final txMap = <String, dynamic>{
-      'savings_goal_id': savingsGoalId,
+      'goal_id': savingsGoalId,
       'user_id': _userId,
       'type': type.toDbString(),
       'amount': amount,
-      'transaction_date': transactionDate.toIso8601String().split('T').first,
     };
     if (note != null) txMap['note'] = note.trim();
 
@@ -76,14 +72,12 @@ class SavingsRepository {
         .eq('id', savingsGoalId)
         .single();
     final curAmount = (goalRes['current_amount'] as num).toInt();
-    final targetAmount = (goalRes['target_amount'] as num).toInt();
 
     final delta = type == SavingsTransactionType.deposit ? amount : -amount;
     final int newAmount = (curAmount + delta) > 0 ? (curAmount + delta) : 0;
 
     await _client.from('pf_savings_goals').update({
       'current_amount': newAmount,
-      'is_completed': newAmount >= targetAmount,
     }).eq('id', savingsGoalId);
   }
 
@@ -92,8 +86,8 @@ class SavingsRepository {
     final res = await _client
         .from('pf_savings_transactions')
         .select()
-        .eq('savings_goal_id', goalId)
-        .order('transaction_date', ascending: false);
+        .eq('goal_id', goalId)
+        .order('created_at', ascending: false);
     return (res as List)
         .map((json) => SavingsTransaction.fromJson(json))
         .toList();

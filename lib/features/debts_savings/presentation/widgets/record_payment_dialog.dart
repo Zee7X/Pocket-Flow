@@ -42,60 +42,61 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.surfaceDark,
+      scrollable: true,
+      backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        side: const BorderSide(color: AppTheme.borderDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+        side: const BorderSide(color: AppTheme.borderLightSubtle),
       ),
       title: Text(
         'Bayar Cicilan: ${widget.debt.name}',
         style: GoogleFonts.plusJakartaSans(
           fontSize: 17,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppTheme.textDarkPrimary,
         ),
       ),
       content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Sisa utang saat ini: ${widget.debt.remainingAmount.toRupiah}',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                color: AppTheme.textDarkSecondary,
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sisa utang saat ini: ${widget.debt.remainingAmount.toRupiah}',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: AppTheme.textDarkSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _amountCtrl,
-              keyboardType: TextInputType.number,
-              style: AppTheme.monoCurrency(fontSize: 16),
-              decoration: const InputDecoration(
-                labelText: 'Jumlah Pembayaran (Rp)',
-                prefixText: 'Rp ',
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _amountCtrl,
+                keyboardType: TextInputType.number,
+                style: AppTheme.monoCurrency(fontSize: 16),
+                decoration: const InputDecoration(
+                  labelText: 'Jumlah Pembayaran (Rp)',
+                  prefixText: 'Rp ',
+                ),
+                validator: (v) {
+                  final clean = v?.replaceAll('.', '') ?? '';
+                  final val = int.tryParse(clean);
+                  if (val == null || val <= 0) return 'Nominal bayar harus > 0';
+                  return null;
+                },
               ),
-              validator: (v) {
-                final clean = v?.replaceAll('.', '') ?? '';
-                final val = int.tryParse(clean);
-                if (val == null || val <= 0) return 'Nominal bayar harus > 0';
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _noteCtrl,
-              style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
-              decoration: const InputDecoration(
-                labelText: 'Catatan (opsional)',
-                hintText: 'misal: Cicilan ke-3',
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _noteCtrl,
+                style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'Catatan (opsional)',
+                  hintText: 'misal: Cicilan ke-3',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),

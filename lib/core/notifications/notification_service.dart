@@ -1,4 +1,4 @@
-// lib/core/notifications/notification_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -11,6 +11,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
+    if (kIsWeb) return;
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -32,6 +33,7 @@ class NotificationService {
     required int hour,
     required int minute,
   }) async {
+    if (kIsWeb) return;
     final now = tz.TZDateTime.now(tz.local);
     var scheduledDate = tz.TZDateTime(
       tz.local,
@@ -74,6 +76,7 @@ class NotificationService {
     required int spentAmount,
     required int budgetAmount,
   }) async {
+    if (kIsWeb) return;
     await _notificationsPlugin.show(
       201,
       'Budget Peringatan ⚠️',
@@ -91,6 +94,7 @@ class NotificationService {
 
   /// Cancel all scheduled reminders
   Future<void> cancelAll() async {
+    if (kIsWeb) return;
     await _notificationsPlugin.cancelAll();
   }
 }

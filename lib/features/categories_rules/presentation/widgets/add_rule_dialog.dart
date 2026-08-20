@@ -9,7 +9,13 @@ import '../providers/categories_rules_provider.dart';
 
 class AddRuleDialog extends ConsumerStatefulWidget {
   final List<Category> categories;
-  const AddRuleDialog({super.key, required this.categories});
+  final AllocationRule? initialRule;
+
+  const AddRuleDialog({
+    super.key,
+    required this.categories,
+    this.initialRule,
+  });
 
   @override
   ConsumerState<AddRuleDialog> createState() => _AddRuleDialogState();
@@ -17,22 +23,47 @@ class AddRuleDialog extends ConsumerStatefulWidget {
 
 class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _amountCtrl = TextEditingController();
-  final _pctCtrl = TextEditingController();
-  final _priorityCtrl = TextEditingController(text: '1');
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _amountCtrl;
+  late final TextEditingController _pctCtrl;
+  late final TextEditingController _priorityCtrl;
 
   String? _selectedCategoryId;
-  AllocationType _selectedType = AllocationType.fixed;
-  PercentageBase _selectedBase = PercentageBase.remaining;
-  bool _isRequired = false;
+  late AllocationType _selectedType;
+  late PercentageBase _selectedBase;
+  late bool _isRequired;
 
   @override
   void initState() {
     super.initState();
-    if (widget.categories.isNotEmpty) {
-      _selectedCategoryId = widget.categories.first.id;
-      _nameCtrl.text = widget.categories.first.name;
+    final init = widget.initialRule;
+    if (init != null) {
+      _nameCtrl = TextEditingController(text: init.name);
+      _amountCtrl = TextEditingController(
+        text: init.fixedAmount > 0 ? init.fixedAmount.toString() : '',
+      );
+      _pctCtrl = TextEditingController(
+        text: init.percentage != null && init.percentage! > 0
+            ? init.percentage!.toStringAsFixed(0)
+            : '',
+      );
+      _priorityCtrl = TextEditingController(text: init.priority.toString());
+      _selectedCategoryId = init.categoryId;
+      _selectedType = init.allocationType;
+      _selectedBase = init.percentageBase;
+      _isRequired = init.isRequired;
+    } else {
+      _nameCtrl = TextEditingController();
+      _amountCtrl = TextEditingController();
+      _pctCtrl = TextEditingController();
+      _priorityCtrl = TextEditingController(text: '1');
+      _selectedType = AllocationType.fixed;
+      _selectedBase = PercentageBase.remaining;
+      _isRequired = false;
+      if (widget.categories.isNotEmpty) {
+        _selectedCategoryId = widget.categories.first.id;
+        _nameCtrl.text = widget.categories.first.name;
+      }
     }
   }
 
@@ -47,22 +78,24 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.initialRule != null;
+
     return AlertDialog(
-      backgroundColor: AppTheme.surfaceDark,
+      scrollable: true,
+      backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        side: const BorderSide(color: AppTheme.borderDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+        side: const BorderSide(color: AppTheme.borderLightSubtle),
       ),
       title: Text(
-        'Tambah Aturan Alokasi',
+        isEditing ? 'Atur Alokasi: ${widget.initialRule!.name}' : 'Tambah Aturan Alokasi',
         style: GoogleFonts.plusJakartaSans(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppTheme.textDarkPrimary,
         ),
       ),
-      content: SingleChildScrollView(
-        child: Form(
+      content: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -70,19 +103,26 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
             children: [
               // Category dropdown
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _selectedCategoryId,
                 decoration: const InputDecoration(labelText: 'Kategori'),
                 items: widget.categories.map((c) {
                   return DropdownMenuItem(
                     value: c.id,
-                    child: Text(c.name, style: GoogleFonts.dmSans()),
+                    child: Text(
+                      c.name,
+                      style: GoogleFonts.dmSans(),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) {
                   setState(() {
                     _selectedCategoryId = val;
-                    final cat = widget.categories.firstWhere((c) => c.id == val);
-                    _nameCtrl.text = cat.name;
+                    if (!isEditing) {
+                      final cat = widget.categories.firstWhere((c) => c.id == val);
+                      _nameCtrl.text = cat.name;
+                    }
                   });
                 },
               ),
@@ -98,92 +138,130 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
 
               // Allocation Type
               DropdownButtonFormField<AllocationType>(
+                isExpanded: true,
                 initialValue: _selectedType,
                 decoration: const InputDecoration(labelText: 'Tipe Alokasi'),
                 items: const [
-                  DropdownMenuItem(value: AllocationType.fixed, child: Text('Nominal Tetap (Fixed)')),
-                  DropdownMenuItem(value: AllocationType.percentage, child: Text('Persentase (%)')),
-                  DropdownMenuItem(value: AllocationType.capped, child: Text('Maksimal (Capped)')),
-                  DropdownMenuItem(value: AllocationType.remaining, child: Text('Semua Sisa (Remaining)')),
+                  DropdownMenuItem(
+                    value: AllocationType.fixed,
+                    child: Text('Nominal Tetap (Fixed)', overflow: TextOverflow.ellipsis),
+                  ),
+                  DropdownMenuItem(
+                    value: AllocationType.capped,
+                    child: Text('Batas Maksimal (Capped)', overflow: TextOverflow.ellipsis),
+                  ),
+                  DropdownMenuItem(
+                    value: AllocationType.percentage,
+                    child: Text('Persentase (%)', overflow: TextOverflow.ellipsis),
+                  ),
+                  DropdownMenuItem(
+                    value: AllocationType.remaining,
+                    child: Text('Sisa Penghasilan (Remaining)', overflow: TextOverflow.ellipsis),
+                  ),
                 ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedType = val);
-                },
+                onChanged: (val) => setState(() => _selectedType = val!),
               ),
               const SizedBox(height: 14),
 
-              if (_selectedType == AllocationType.fixed || _selectedType == AllocationType.capped) ...[
+              // Fixed Amount Input
+              if (_selectedType == AllocationType.fixed ||
+                  _selectedType == AllocationType.capped) ...[
                 TextFormField(
                   controller: _amountCtrl,
                   keyboardType: TextInputType.number,
-                  style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
-                  decoration: const InputDecoration(
-                    labelText: 'Nominal (Rp)',
-                    hintText: 'misal: 850000',
+                  style: AppTheme.monoCurrency(fontSize: 16),
+                  decoration: InputDecoration(
+                    labelText: _selectedType == AllocationType.fixed
+                        ? 'Nominal Pasti (Rp)'
+                        : 'Batas Maksimal (Rp)',
+                    hintText: 'misal: 1500000',
                     prefixText: 'Rp ',
                   ),
-                  validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0 ? 'Nominal harus > 0' : null,
+                  validator: (v) {
+                    final clean = v?.replaceAll('.', '').replaceAll(',', '') ?? '';
+                    final val = int.tryParse(clean);
+                    if (val == null || val <= 0) return 'Nominal harus > 0';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 14),
               ],
 
+              // Percentage Input
               if (_selectedType == AllocationType.percentage) ...[
                 TextFormField(
                   controller: _pctCtrl,
                   keyboardType: TextInputType.number,
-                  style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
+                  style: GoogleFonts.robotoMono(color: AppTheme.textDarkPrimary),
                   decoration: const InputDecoration(
                     labelText: 'Persentase (%)',
-                    hintText: 'misal: 10, 20, 50',
+                    hintText: 'misal: 20',
                     suffixText: '%',
                   ),
                   validator: (v) {
-                    final d = double.tryParse(v ?? '');
-                    if (d == null || d <= 0 || d > 100) return 'Persentase 1 - 100%';
+                    final val = double.tryParse(v ?? '');
+                    if (val == null || val <= 0 || val > 100) {
+                      return 'Persentase 1 - 100%';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<PercentageBase>(
+                  isExpanded: true,
                   initialValue: _selectedBase,
                   decoration: const InputDecoration(labelText: 'Dihitung Dari'),
                   items: const [
-                    DropdownMenuItem(value: PercentageBase.remaining, child: Text('Sisa Penghasilan')),
-                    DropdownMenuItem(value: PercentageBase.totalIncome, child: Text('Total Gaji')),
-                    DropdownMenuItem(value: PercentageBase.extraIncome, child: Text('Bonus / Extra Income')),
+                    DropdownMenuItem(
+                      value: PercentageBase.remaining,
+                      child: Text('Sisa Penghasilan', overflow: TextOverflow.ellipsis),
+                    ),
+                    DropdownMenuItem(
+                      value: PercentageBase.totalIncome,
+                      child: Text('Total Gaji Masuk', overflow: TextOverflow.ellipsis),
+                    ),
                   ],
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedBase = val);
-                  },
+                  onChanged: (val) => setState(() => _selectedBase = val!),
                 ),
                 const SizedBox(height: 14),
               ],
 
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _priorityCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Prioritas (Urutan)'),
-                    ),
+              // Priority
+              TextFormField(
+                controller: _priorityCtrl,
+                keyboardType: TextInputType.number,
+                style: GoogleFonts.robotoMono(color: AppTheme.textDarkPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'Urutan Prioritas (#)',
+                  hintText: '1 (Diproses pertama)',
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Is Required Switch
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Kategori Wajib',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: AppTheme.textDarkPrimary,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('Wajib', style: GoogleFonts.dmSans(fontSize: 13)),
-                      value: _isRequired,
-                      activeColor: AppTheme.primary,
-                      onChanged: (v) => setState(() => _isRequired = v ?? false),
-                    ),
+                ),
+                subtitle: Text(
+                  'Peringatan jika sisa gaji tidak cukup untuk alokasi ini',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    color: AppTheme.textDarkMuted,
                   ),
-                ],
+                ),
+                value: _isRequired,
+                activeThumbColor: AppTheme.danger,
+                onChanged: (val) => setState(() => _isRequired = val),
               ),
             ],
           ),
         ),
-      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -191,30 +269,49 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
         ),
         ElevatedButton(
           onPressed: _save,
-          style: ElevatedButton.styleFrom(minimumSize: const Size(100, 42)),
-          child: const Text('Simpan'),
+          child: Text(isEditing ? 'Simpan Perubahan' : 'Simpan Aturan'),
         ),
       ],
     );
   }
 
   void _save() {
-    if (!_formKey.currentState!.validate() || _selectedCategoryId == null) return;
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedCategoryId == null) return;
 
-    final fixed = int.tryParse(_amountCtrl.text.replaceAll('.', '')) ?? 0;
-    final pct = double.tryParse(_pctCtrl.text);
+    final fixedAmount = int.tryParse(
+          _amountCtrl.text.replaceAll('.', '').replaceAll(',', ''),
+        ) ??
+        0;
+    final percentage = double.tryParse(_pctCtrl.text);
     final priority = int.tryParse(_priorityCtrl.text) ?? 1;
+    final isEditing = widget.initialRule != null;
 
-    ref.read(allocationRulesProvider.notifier).addRule(
-          categoryId: _selectedCategoryId!,
-          name: _nameCtrl.text.trim(),
-          allocationType: _selectedType,
-          fixedAmount: fixed,
-          percentage: pct,
-          percentageBase: _selectedBase,
-          priority: priority,
-          isRequired: _isRequired,
-        );
+    if (isEditing) {
+      ref.read(allocationRulesProvider.notifier).updateRule(
+            id: widget.initialRule!.id,
+            categoryId: _selectedCategoryId!,
+            name: _nameCtrl.text.trim(),
+            allocationType: _selectedType,
+            fixedAmount: fixedAmount,
+            percentage: percentage,
+            percentageBase: _selectedBase,
+            priority: priority,
+            isRequired: _isRequired,
+          );
+    } else {
+      ref.read(allocationRulesProvider.notifier).addRule(
+            categoryId: _selectedCategoryId!,
+            name: _nameCtrl.text.trim(),
+            allocationType: _selectedType,
+            fixedAmount: fixedAmount,
+            percentage: percentage,
+            percentageBase: _selectedBase,
+            priority: priority,
+            isRequired: _isRequired,
+          );
+    }
+
     Navigator.pop(context);
   }
 }

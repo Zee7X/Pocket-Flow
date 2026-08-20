@@ -1,132 +1,204 @@
 // lib/app/theme.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// CloudPulse Design System Implementation
-/// Philosophy: Calm confidence — generous whitespace, soft rounded surfaces,
-/// sky-to-violet gradient language evoking reliability and uptime.
+/// Modern Neo-Banking Design System (Clean Light Canvas + Royal Blue Hero)
 class AppTheme {
-  // ─── CloudPulse Palette ──────────────────────────────────────────────────
-  static const Color primary = Color(0xFF0EA5E9); // Sky Blue (Primary actions, healthy status)
-  static const Color primaryHover = Color(0xFF0284C7);
-  static const Color primaryActive = Color(0xFF0369A1);
-  static const Color secondary = Color(0xFF8B5CF6); // Violet (Accent highlights, graph gradients)
-  static const Color tertiary = Color(0xFF14B8A6); // Teal (Positive metrics, throughput)
-
-  // Light Mode Canvas & Surfaces
-  static const Color bgLight = Color(0xFFF8FAFC);
+  // ─── Color Palette ─────────────────────────────────────────────────────────
+  // Canvas & Surfaces
+  static const Color canvasLight = Color(0xFFF4F6FA);
   static const Color surfaceLight = Color(0xFFFFFFFF);
+  static const Color surfaceLightAlt = Color(0xFFF8FAFC);
   static const Color borderLight = Color(0xFFE2E8F0);
-  static const Color borderLightHover = Color(0xFFCBD5E1);
+  static const Color borderLightSubtle = Color(0xFFF1F5F9);
 
-  // Dark Mode Canvas & Surfaces
-  static const Color bgDark = Color(0xFF0B0F19); // Deep Slate Dark
-  static const Color surfaceDark = Color(0xFF111827); // Dark Card Surface
-  static const Color surfaceDarkAlt = Color(0xFF1E293B); // Dark Input / Alt
-  static const Color borderDark = Color(0xFF334155);
+  // Backward compatibility alias
+  static const Color canvasDark = canvasLight;
+  static const Color surfaceDark = surfaceLight;
+  static const Color surfaceDarkAlt = surfaceLightAlt;
+  static const Color borderDark = borderLight;
+
+  // Primary & Hero Gradients
+  static const Color primary = Color(0xFF2563EB); // Royal Blue
+  static const Color primaryDark = Color(0xFF1D4ED8);
+  static const Color primaryLight = Color(0xFF60A5FA);
+  static const Color secondary = Color(0xFF0EA5E9); // Sky / Cyan
+  static const Color tertiary = Color(0xFF10B981); // Emerald Teal
 
   // Semantic Status Colors
-  static const Color success = Color(0xFF22C55E); // Positive / Healthy
-  static const Color warning = Color(0xFFEAB308); // Degraded / Approaching limit
-  static const Color danger = Color(0xFFEF4444); // Critical / Error
-  static const Color info = Color(0xFF0EA5E9); // General info
+  static const Color success = Color(0xFF10B981);
+  static const Color danger = Color(0xFFEF4444);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color info = Color(0xFF3B82F6);
 
-  // Text Colors (Dark Mode)
-  static const Color textDarkPrimary = Color(0xFFF8FAFC);
-  static const Color textDarkSecondary = Color(0xFF94A3B8);
-  static const Color textDarkMuted = Color(0xFF64748B);
+  // Pastel Category Backgrounds
+  static const Color pastelBlue = Color(0xFFEFF6FF);
+  static const Color pastelGreen = Color(0xFFECFDF5);
+  static const Color pastelRed = Color(0xFFFEF2F2);
+  static const Color pastelYellow = Color(0xFFFFFBEB);
+  static const Color pastelPurple = Color(0xFFF5F3FF);
+  static const Color pastelCyan = Color(0xFFECFEFF);
 
-  // Text Colors (Light Mode)
-  static const Color textLightPrimary = Color(0xFF0F172A);
-  static const Color textLightSecondary = Color(0xFF64748B);
-  static const Color textLightMuted = Color(0xFF94A3B8);
+  // Typography Colors
+  static const Color textDarkPrimary = Color(0xFF0F172A); // Deep Charcoal Slate
+  static const Color textDarkSecondary = Color(0xFF64748B); // Slate Muted
+  static const Color textDarkMuted = Color(0xFF94A3B8); // Light Slate
+  static const Color textOnPrimary = Color(0xFFFFFFFF);
 
-  // ─── CloudPulse Gradients ────────────────────────────────────────────────
-  static const LinearGradient skyToViolet = LinearGradient(
+  // Hero Card Gradient (As seen in the blue card of reference image)
+  static const LinearGradient heroGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primary, secondary],
+    colors: [
+      Color(0xFF1D4ED8), // Deep Royal Blue
+      Color(0xFF2563EB), // Electric Blue
+      Color(0xFF3B82F6), // Bright Blue
+    ],
   );
 
-  static LinearGradient subtleGlowGradient({bool isDark = true}) => LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: isDark
-            ? [
-                primary.withValues(alpha: 0.18),
-                secondary.withValues(alpha: 0.08),
-              ]
-            : [
-                primary.withValues(alpha: 0.12),
-                secondary.withValues(alpha: 0.04),
-              ],
+  static const LinearGradient accentGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF2563EB),
+      Color(0xFF0EA5E9),
+    ],
+  );
+
+  // ─── Radii & Shadows ────────────────────────────────────────────────────────
+  static const double radiusSmall = 8.0;
+  static const double radiusMedium = 12.0;
+  static const double radiusLarge = 18.0;
+  static const double radiusXL = 24.0;
+  static const double radiusFull = 999.0;
+
+  static List<BoxShadow> get cardShadow => [
+        const BoxShadow(
+          color: Color(0x080F172A),
+          blurRadius: 16,
+          offset: Offset(0, 4),
+          spreadRadius: 0,
+        ),
+      ];
+
+  static List<BoxShadow> get heroShadow => [
+        BoxShadow(
+          color: primary.withValues(alpha: 0.3),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+          spreadRadius: 0,
+        ),
+      ];
+
+  // ─── Typography Helpers ───────────────────────────────────────────────────
+  static TextStyle headingLarge({Color color = textDarkPrimary}) =>
+      GoogleFonts.plusJakartaSans(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: color,
+        letterSpacing: -0.5,
       );
 
-  // ─── Radii ───────────────────────────────────────────────────────────────
-  static const double radiusSmall = 4.0;
-  static const double radiusMedium = 8.0; // Buttons, Inputs, Chips
-  static const double radiusLarge = 12.0; // Cards, Panels, Modals
-  static const double radiusXL = 20.0; // Hero Cards, Onboarding Dialogs
-  static const double radiusFull = 9999.0; // Avatars, Pills
+  static TextStyle headingMedium({Color color = textDarkPrimary}) =>
+      GoogleFonts.plusJakartaSans(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: color,
+        letterSpacing: -0.3,
+      );
 
-  // ─── Dark Theme ───────────────────────────────────────────────────────────
-  static ThemeData get dark {
-    final base = ThemeData.dark(useMaterial3: true);
+  static TextStyle bodyMedium({Color color = textDarkSecondary}) =>
+      GoogleFonts.dmSans(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: color,
+      );
 
-    return base.copyWith(
-      scaffoldBackgroundColor: bgDark,
-      colorScheme: const ColorScheme.dark(
+  static TextStyle bodySmall({Color color = textDarkMuted}) =>
+      GoogleFonts.dmSans(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        color: color,
+      );
+
+  static TextStyle monoCurrency({
+    Color color = textDarkPrimary,
+    double fontSize = 16,
+    FontWeight fontWeight = FontWeight.w600,
+  }) =>
+      GoogleFonts.plusJakartaSans(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+        letterSpacing: -0.2,
+      );
+
+  // ─── Theme Data ───────────────────────────────────────────────────────────
+  static ThemeData get dark => getThemeData();
+
+  static ThemeData getThemeData() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: canvasLight,
+      colorScheme: const ColorScheme.light(
         primary: primary,
         secondary: secondary,
-        tertiary: tertiary,
-        surface: surfaceDark,
+        surface: surfaceLight,
         error: danger,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: textDarkPrimary,
         onError: Colors.white,
       ),
-      textTheme: _buildTextTheme(
-        headlineColor: textDarkPrimary,
-        bodyColor: textDarkPrimary,
-        secondaryColor: textDarkSecondary,
-        mutedColor: textDarkMuted,
-      ),
+      fontFamily: GoogleFonts.dmSans().fontFamily,
+
+      // AppBar Theme
       appBarTheme: AppBarTheme(
-        backgroundColor: bgDark,
+        backgroundColor: canvasLight,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
-          color: textDarkPrimary,
-          fontWeight: FontWeight.w600,
-          fontSize: 18,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: canvasLight,
+          systemNavigationBarIconBrightness: Brightness.dark,
         ),
         iconTheme: const IconThemeData(color: textDarkPrimary),
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: textDarkPrimary,
+          letterSpacing: -0.3,
+        ),
       ),
+
+      // Card Theme
       cardTheme: CardThemeData(
-        color: surfaceDark,
+        color: surfaceLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLarge),
-          side: const BorderSide(color: borderDark),
+          side: const BorderSide(color: borderLightSubtle),
         ),
-        margin: EdgeInsets.zero,
       ),
+
+      // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceDarkAlt,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
+        fillColor: surfaceLightAlt,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          borderSide: const BorderSide(color: borderDark),
+          borderSide: const BorderSide(color: borderLight),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          borderSide: const BorderSide(color: borderDark),
+          borderSide: const BorderSide(color: borderLight),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
@@ -136,174 +208,195 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusMedium),
           borderSide: const BorderSide(color: danger),
         ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMedium),
-          borderSide: const BorderSide(color: danger, width: 1.5),
-        ),
-        hintStyle: GoogleFonts.dmSans(color: textDarkMuted, fontSize: 15),
-        labelStyle: GoogleFonts.dmSans(color: textDarkSecondary, fontSize: 14, fontWeight: FontWeight.w500),
-        errorStyle: GoogleFonts.dmSans(color: danger, fontSize: 12),
+        labelStyle: GoogleFonts.dmSans(color: textDarkSecondary, fontSize: 14),
+        hintStyle: GoogleFonts.dmSans(color: textDarkMuted, fontSize: 14),
       ),
+
+      // Button Themes
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 48), // CloudPulse Large Button (48px)
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMedium),
           ),
-          elevation: 0,
           textStyle: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
             fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
+
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: const BorderSide(color: primary),
-          minimumSize: const Size(double.infinity, 48),
+          foregroundColor: textDarkPrimary,
+          side: const BorderSide(color: borderLight),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMedium),
           ),
           textStyle: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
+
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primary,
           textStyle: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w500,
             fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
+
+      // Chip Theme
       chipTheme: ChipThemeData(
-        backgroundColor: surfaceDarkAlt,
-        selectedColor: primary,
-        secondarySelectedColor: primary,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        backgroundColor: surfaceLight,
+        selectedColor: primary.withValues(alpha: 0.12),
+        labelStyle: GoogleFonts.dmSans(fontSize: 12, color: textDarkSecondary),
+        secondaryLabelStyle: GoogleFonts.dmSans(
+            fontSize: 12, color: primary, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMedium),
-          side: const BorderSide(color: borderDark),
+          borderRadius: BorderRadius.circular(radiusFull),
+          side: const BorderSide(color: borderLight),
         ),
-        labelStyle: GoogleFonts.dmSans(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      ),
+
+      // Dialog Theme
+      dialogTheme: DialogThemeData(
+        backgroundColor: surfaceLight,
+        elevation: 10,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusXL),
+          side: const BorderSide(color: borderLightSubtle),
+        ),
+      ),
+
+      // BottomSheet Theme
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: surfaceLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXL)),
+        ),
+      ),
+
+      // Divider Theme
+      dividerTheme: const DividerThemeData(
+        color: borderLightSubtle,
+        thickness: 1,
+        space: 1,
+      ),
+
+      // SnackBar Theme
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: surfaceLight,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+          side: const BorderSide(color: borderLightSubtle, width: 1.2),
+        ),
+        contentTextStyle: GoogleFonts.dmSans(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w600,
           color: textDarkPrimary,
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surfaceDark,
-        selectedItemColor: primary,
-        unselectedItemColor: textDarkMuted,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-      dividerTheme: const DividerThemeData(
-        color: borderDark,
-        thickness: 1,
-      ),
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: surfaceDarkAlt,
-        contentTextStyle: GoogleFonts.dmSans(color: textDarkPrimary),
+    );
+  }
+
+  // ─── SnackBar Helpers ───────────────────────────────────────────────────────
+  static void showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFFFEF2F2),
+        elevation: 6,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLarge),
-          side: const BorderSide(color: borderDark),
+          side: const BorderSide(color: Color(0xFFFCA5A5), width: 1.2),
         ),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: Color(0xFFDC2626),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF991B1B),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  static void showSuccessSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
         behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFFECFDF5),
+        elevation: 6,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+          side: const BorderSide(color: Color(0xFF6EE7B7), width: 1.2),
+        ),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Color(0xFFD1FAE5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_outline_rounded,
+                color: Color(0xFF059669),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF065F46),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 4),
       ),
-    );
-  }
-
-  // ─── Typography Builder ───────────────────────────────────────────────────
-  // Headlines: Plus Jakarta Sans | Body: DM Sans | Mono: Roboto Mono
-  static TextTheme _buildTextTheme({
-    required Color headlineColor,
-    required Color bodyColor,
-    required Color secondaryColor,
-    required Color mutedColor,
-  }) {
-    return TextTheme(
-      // Display: Plus Jakarta Sans 52px extra-bold
-      displayLarge: GoogleFonts.plusJakartaSans(
-        color: headlineColor,
-        fontWeight: FontWeight.w800,
-        fontSize: 32,
-        letterSpacing: 0.025,
-      ),
-      // Headline: Plus Jakarta Sans 40px bold
-      headlineLarge: GoogleFonts.plusJakartaSans(
-        color: headlineColor,
-        fontWeight: FontWeight.w700,
-        fontSize: 26,
-        letterSpacing: 0.015,
-      ),
-      // Subhead: Plus Jakarta Sans 28px semibold
-      headlineMedium: GoogleFonts.plusJakartaSans(
-        color: headlineColor,
-        fontWeight: FontWeight.w600,
-        fontSize: 22,
-        letterSpacing: 0.01,
-      ),
-      // Title: Plus Jakarta Sans 18px semibold
-      titleLarge: GoogleFonts.plusJakartaSans(
-        color: headlineColor,
-        fontWeight: FontWeight.w600,
-        fontSize: 17,
-      ),
-      titleMedium: GoogleFonts.plusJakartaSans(
-        color: headlineColor,
-        fontWeight: FontWeight.w500,
-        fontSize: 15,
-      ),
-      // Body Large: DM Sans 18px regular
-      bodyLarge: GoogleFonts.dmSans(
-        color: bodyColor,
-        fontSize: 16,
-        height: 1.5,
-      ),
-      // Body: DM Sans 16px regular
-      bodyMedium: GoogleFonts.dmSans(
-        color: secondaryColor,
-        fontSize: 14,
-        height: 1.5,
-      ),
-      // Body Small: DM Sans 14px regular
-      bodySmall: GoogleFonts.dmSans(
-        color: mutedColor,
-        fontSize: 12,
-        height: 1.4,
-      ),
-      // Labels / Controls: DM Sans 14px 600
-      labelLarge: GoogleFonts.dmSans(
-        color: headlineColor,
-        fontWeight: FontWeight.w600,
-        fontSize: 14,
-      ),
-      labelMedium: GoogleFonts.dmSans(
-        color: secondaryColor,
-        fontWeight: FontWeight.w500,
-        fontSize: 12,
-      ),
-    );
-  }
-
-  /// Roboto Mono text style for financial numbers and monetary amounts
-  static TextStyle monoCurrency({
-    Color color = textDarkPrimary,
-    double fontSize = 16,
-    FontWeight fontWeight = FontWeight.w600,
-  }) {
-    return GoogleFonts.robotoMono(
-      color: color,
-      fontSize: fontSize,
-      fontWeight: fontWeight,
-      letterSpacing: -0.2,
     );
   }
 }

@@ -31,7 +31,14 @@ class AuthNotifier extends Notifier<domain.AuthState> {
     // Initial state from current session
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
-      return domain.AuthAuthenticated(userId: user.id, email: user.email);
+      final name = user.userMetadata?['name'] as String? ??
+          user.userMetadata?['full_name'] as String? ??
+          user.userMetadata?['username'] as String?;
+      return domain.AuthAuthenticated(
+        userId: user.id,
+        email: user.email,
+        displayName: name,
+      );
     }
     return const domain.AuthUnauthenticated();
   }
@@ -39,7 +46,14 @@ class AuthNotifier extends Notifier<domain.AuthState> {
   void _onAuthStateChange(AuthState authState) {
     final user = authState.session?.user;
     if (user != null) {
-      state = domain.AuthAuthenticated(userId: user.id, email: user.email);
+      final name = user.userMetadata?['name'] as String? ??
+          user.userMetadata?['full_name'] as String? ??
+          user.userMetadata?['username'] as String?;
+      state = domain.AuthAuthenticated(
+        userId: user.id,
+        email: user.email,
+        displayName: name,
+      );
     } else {
       state = const domain.AuthUnauthenticated();
     }

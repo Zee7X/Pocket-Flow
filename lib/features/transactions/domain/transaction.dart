@@ -50,6 +50,7 @@ class TransactionModel {
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     final cat = json['pf_categories'] as Map<String, dynamic>?;
+    final note = json['note'] as String? ?? json['description'] as String?;
     return TransactionModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -57,8 +58,8 @@ class TransactionModel {
       type: TransactionType.fromString(json['type'] as String? ?? 'expense'),
       amount: (json['amount'] as num).toInt(),
       transactionDate: DateTime.parse(json['transaction_date'] as String),
-      description: json['description'] as String?,
-      paymentMethod: json['payment_method'] as String?,
+      description: note,
+      paymentMethod: null,
       createdAt: DateTime.parse(json['created_at'] as String),
       categoryName: cat?['name'] as String?,
       categoryIcon: cat?['icon'] as String?,
@@ -69,12 +70,11 @@ class TransactionModel {
   Map<String, dynamic> toJson() {
     return {
       'user_id': userId,
-      if (categoryId != null) 'category_id': categoryId,
       'type': type.toDbString(),
       'amount': amount,
       'transaction_date': transactionDate.toIso8601String().split('T').first,
-      if (description != null) 'description': description,
-      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (categoryId != null) 'category_id': categoryId,
+      if (description != null) 'note': description,
     };
   }
 }

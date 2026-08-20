@@ -96,7 +96,7 @@ class AllocationRule {
       name: json['name'] as String,
       allocationType: AllocationType.fromString(json['allocation_type'] as String? ?? 'fixed'),
       fixedAmount: (json['fixed_amount'] as num?)?.toInt() ?? 0,
-      percentage: (json['percentage'] as num?)?.toDouble(),
+      percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
       percentageBase: PercentageBase.fromString(json['percentage_base'] as String? ?? 'remaining'),
       minAmount: (json['min_amount'] as num?)?.toInt(),
       maxAmount: (json['max_amount'] as num?)?.toInt(),

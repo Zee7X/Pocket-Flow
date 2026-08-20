@@ -16,7 +16,7 @@ class DebtRepository {
         .from('pf_debts')
         .select()
         .eq('user_id', _userId)
-        .order('is_paid')
+        .order('status')
         .order('remaining_amount', ascending: false);
     return (res as List).map((json) => Debt.fromJson(json)).toList();
   }
@@ -34,14 +34,12 @@ class DebtRepository {
     final map = <String, dynamic>{
       'user_id': _userId,
       'name': name.trim(),
-      'debt_type': debtType.toDbString(),
-      'total_amount': totalAmount,
+      'initial_amount': totalAmount,
       'remaining_amount': remainingAmount,
       'minimum_payment': minimumPayment,
-      'is_paid': remainingAmount <= 0,
+      'status': remainingAmount <= 0 ? 'paid' : 'active',
+      'note': debtType.toDbString(),
     };
-    if (interestRate != null) map['interest_rate'] = interestRate;
-    if (dueDay != null) map['due_day'] = dueDay;
 
     final res = await _client.from('pf_debts').insert(map).select().single();
     return Debt.fromJson(res);
@@ -75,7 +73,7 @@ class DebtRepository {
 
     await _client.from('pf_debts').update({
       'remaining_amount': newRemaining,
-      'is_paid': newRemaining <= 0,
+      'status': newRemaining <= 0 ? 'paid' : 'active',
     }).eq('id', debtId);
   }
 

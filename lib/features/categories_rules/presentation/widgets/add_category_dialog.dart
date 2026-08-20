@@ -27,64 +27,65 @@ class _AddCategoryDialogState extends ConsumerState<AddCategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.surfaceDark,
+      scrollable: true,
+      backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        side: const BorderSide(color: AppTheme.borderDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+        side: const BorderSide(color: AppTheme.borderLightSubtle),
       ),
       title: Text(
         'Tambah Kategori Baru',
         style: GoogleFonts.plusJakartaSans(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppTheme.textDarkPrimary,
         ),
       ),
       content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextFormField(
-              controller: _nameCtrl,
-              textCapitalization: TextCapitalization.words,
-              style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
-              decoration: const InputDecoration(
-                labelText: 'Nama Kategori',
-                hintText: 'misal: Belanja Bulanan, Kuota, dll',
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _nameCtrl,
+                textCapitalization: TextCapitalization.words,
+                style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'Nama Kategori',
+                  hintText: 'misal: Belanja Bulanan, Kuota, dll',
+                ),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Nama kategori wajib diisi' : null,
               ),
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Nama kategori wajib diisi' : null,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Tipe Kategori',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                color: AppTheme.textDarkSecondary,
-                fontWeight: FontWeight.w500,
+              const SizedBox(height: 16),
+              Text(
+                'Tipe Kategori',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: AppTheme.textDarkSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: CategoryType.values.map((type) {
-                final isSelected = _selectedType == type;
-                return ChoiceChip(
-                  label: Text(_getTypeLabel(type)),
-                  selected: isSelected,
-                  selectedColor: AppTheme.primary,
-                  backgroundColor: AppTheme.surfaceDarkAlt,
-                  onSelected: (selected) {
-                    if (selected) setState(() => _selectedType = type);
-                  },
-                );
-              }).toList(),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: CategoryType.values.map((type) {
+                  final isSelected = _selectedType == type;
+                  return ChoiceChip(
+                    label: Text(_getTypeLabel(type)),
+                    selected: isSelected,
+                    selectedColor: AppTheme.primary,
+                    backgroundColor: AppTheme.surfaceDarkAlt,
+                    onSelected: (selected) {
+                      if (selected) setState(() => _selectedType = type);
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
-      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),

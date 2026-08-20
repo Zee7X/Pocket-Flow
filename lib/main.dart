@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,23 +19,26 @@ Future<void> main() async {
     publishableKey: SupabaseConstants.publishableKey,
   );
 
-  // Initialize timezone data for local notifications
-  tz.initializeTimeZones();
-  await NotificationService().init();
+  if (!kIsWeb) {
+    // Initialize timezone data for local notifications
+    tz.initializeTimeZones();
+    await NotificationService().init();
 
-  // Force portrait orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    // Force portrait orientation on mobile devices
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
-  // Set system UI overlay style
+  // Set system UI overlay style for seamless edge-to-edge status bar
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF0F0F13),
-      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFFF8FAFC),
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
 

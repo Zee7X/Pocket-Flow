@@ -50,6 +50,35 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionModel>> {
     ref.invalidate(monthlyBudgetsProvider);
   }
 
+  Future<void> editTransaction({
+    required String id,
+    String? categoryId,
+    required TransactionType type,
+    required int amount,
+    required DateTime transactionDate,
+    String? description,
+    String? paymentMethod,
+  }) async {
+    final updatedTx =
+        await ref.read(transactionRepositoryProvider).updateTransaction(
+              id: id,
+              categoryId: categoryId,
+              type: type,
+              amount: amount,
+              transactionDate: transactionDate,
+              description: description,
+              paymentMethod: paymentMethod,
+            );
+
+    // In-place update of edited item
+    state = AsyncValue.data(
+      (state.value ?? []).map((t) => t.id == id ? updatedTx : t).toList(),
+    );
+
+    // Invalidate monthly budgets to reflect newly spent budget
+    ref.invalidate(monthlyBudgetsProvider);
+  }
+
   Future<void> deleteTransaction(String id) async {
     await ref.read(transactionRepositoryProvider).deleteTransaction(id);
 

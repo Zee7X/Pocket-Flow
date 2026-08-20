@@ -36,21 +36,21 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.surfaceDark,
+      scrollable: true,
+      backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        side: const BorderSide(color: AppTheme.borderDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+        side: const BorderSide(color: AppTheme.borderLightSubtle),
       ),
       title: Text(
         'Tambah Catatan Utang / Cicilan',
         style: GoogleFonts.plusJakartaSans(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppTheme.textDarkPrimary,
         ),
       ),
-      content: SingleChildScrollView(
-        child: Form(
+      content: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -138,7 +138,6 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
             ],
           ),
         ),
-      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),

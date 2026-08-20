@@ -14,8 +14,13 @@ class AuthInitial extends AuthState {
 class AuthAuthenticated extends AuthState {
   final String userId;
   final String? email;
+  final String? displayName;
 
-  const AuthAuthenticated({required this.userId, this.email});
+  const AuthAuthenticated({
+    required this.userId,
+    this.email,
+    this.displayName,
+  });
 }
 
 /// User is not authenticated.

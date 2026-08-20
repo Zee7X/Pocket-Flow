@@ -16,6 +16,7 @@ class CategoryRepository {
         .from('pf_categories')
         .select()
         .eq('user_id', _userId)
+        .order('type')
         .order('name');
     return (res as List).map((json) => Category.fromJson(json)).toList();
   }
@@ -31,15 +32,14 @@ class CategoryRepository {
       'user_id': _userId,
       'name': name.trim(),
       'type': type.toDbString(),
+      'is_active': true,
+      'is_spendable': type == CategoryType.expense,
     };
     if (icon != null) map['icon'] = icon;
     if (color != null) map['color'] = color;
 
-    final res = await _client
-        .from('pf_categories')
-        .insert(map)
-        .select()
-        .single();
+    final res =
+        await _client.from('pf_categories').insert(map).select().single();
     return Category.fromJson(res);
   }
 
@@ -52,7 +52,7 @@ class CategoryRepository {
         .eq('user_id', _userId);
   }
 
-  /// Fetch available onboarding templates from system
+  /// Fetch onboarding templates
   Future<List<TemplateGroup>> getCategoryTemplates() async {
     final res = await _client
         .from('pf_category_templates')
@@ -97,7 +97,9 @@ class CategoryRepository {
             'user_id': _userId,
             'name': item.categoryName,
             'type': item.categoryType,
-            'is_default': true,
+            'is_active': true,
+            'is_spendable': item.categoryType == 'expense',
+            'sort_order': item.sortOrder,
           })
           .select()
           .single();
@@ -113,7 +115,7 @@ class CategoryRepository {
         'priority': i + 1,
         'is_active': true,
       };
-      if (item.defaultPercentage != null) {
+      if (item.defaultPercentage != null && item.defaultPercentage! > 0) {
         ruleMap['percentage'] = item.defaultPercentage;
       }
       await _client.from('pf_allocation_rules').insert(ruleMap);

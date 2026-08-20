@@ -34,25 +34,25 @@ class SavingsTransaction {
   });
 
   factory SavingsTransaction.fromJson(Map<String, dynamic> json) {
+    final created = DateTime.parse(json['created_at'] as String);
     return SavingsTransaction(
       id: json['id'] as String,
-      savingsGoalId: json['savings_goal_id'] as String,
+      savingsGoalId: json['goal_id'] as String? ?? json['savings_goal_id'] as String? ?? '',
       userId: json['user_id'] as String,
       type: SavingsTransactionType.fromString(json['type'] as String? ?? 'deposit'),
       amount: (json['amount'] as num).toInt(),
-      transactionDate: DateTime.parse(json['transaction_date'] as String),
+      transactionDate: created,
       note: json['note'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: created,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'savings_goal_id': savingsGoalId,
+      'goal_id': savingsGoalId,
       'user_id': userId,
       'type': type.toDbString(),
       'amount': amount,
-      'transaction_date': transactionDate.toIso8601String().split('T').first,
       if (note != null) 'note': note,
     };
   }
