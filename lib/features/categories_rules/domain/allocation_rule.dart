@@ -37,6 +37,7 @@ enum PercentageBase {
         return PercentageBase.totalIncome;
       case 'extra_income':
         return PercentageBase.extraIncome;
+      case 'remaining_income':
       case 'remaining':
       default:
         return PercentageBase.remaining;
@@ -50,7 +51,7 @@ enum PercentageBase {
       case PercentageBase.extraIncome:
         return 'extra_income';
       case PercentageBase.remaining:
-        return 'remaining';
+        return 'remaining_income';
     }
   }
 }

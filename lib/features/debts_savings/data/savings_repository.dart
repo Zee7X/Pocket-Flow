@@ -92,4 +92,18 @@ class SavingsRepository {
         .map((json) => SavingsTransaction.fromJson(json))
         .toList();
   }
+
+  /// Delete a savings goal
+  Future<void> deleteSavingsGoal(String goalId) async {
+    await _client
+        .from('pf_savings_transactions')
+        .delete()
+        .eq('goal_id', goalId)
+        .eq('user_id', _userId);
+    await _client
+        .from('pf_savings_goals')
+        .delete()
+        .eq('id', goalId)
+        .eq('user_id', _userId);
+  }
 }

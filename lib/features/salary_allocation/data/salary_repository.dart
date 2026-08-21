@@ -50,7 +50,7 @@ class SalaryRepository {
   }) async {
     final res = await _client
         .from('pf_monthly_budgets')
-        .select('*, pf_categories(name, type, icon, color)')
+        .select('*, pf_categories(name, type, icon, color, is_fixed)')
         .eq('user_id', _userId)
         .eq('period_month', periodMonth)
         .eq('period_year', periodYear);

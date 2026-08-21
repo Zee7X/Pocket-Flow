@@ -58,7 +58,7 @@ Sebagian besar aplikasi pencatat keuangan konvensional hanya bersifat *reaktif* 
 - **Savings Rate**: Persentase rasio tabungan terhadap total pendapatan bulanan.
 
 ### 7. 🏷️ Manajemen Kategori & Template Aturan Alokasi
-- **Template Bawaan Siap Pakai**: Pilihan template alokasi untuk *Keluarga (50/30/20), Karyawan Single (40/30/20/10), Freelancer (30/30/20/20),* dan *Minimalis*.
+- **Template Bawaan Siap Pakai**: Pilihan struktur kategori untuk *Karyawan / Basic Employee, Mahasiswa / Student, Freelancer,* dan *Keluarga / Family*.
 - **Aturan Alokasi Kustom**: Buat aturan alokasi tetap maupun persentase dari sisa penghasilan sesuai gaya hidup Anda.
 
 ---

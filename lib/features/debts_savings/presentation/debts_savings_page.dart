@@ -76,11 +76,19 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
         bottom: TabBar(
           controller: _tabCtrl,
           indicatorColor: AppTheme.primary,
-          indicatorWeight: 2.5,
+          indicatorWeight: 3,
+          indicatorSize: TabBarIndicatorSize.tab,
+          dividerColor: Colors.transparent,
           labelColor: AppTheme.primary,
           unselectedLabelColor: AppTheme.textDarkMuted,
-          labelStyle:
-              GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 14),
+          labelStyle: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+          unselectedLabelStyle: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
           tabs: const [
             Tab(text: 'Tabungan & Dana Darurat'),
             Tab(text: 'Utang & Cicilan'),
@@ -135,13 +143,10 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Top: Circle Icon + Name/Status + Target Amount
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: isEmergency
                                 ? AppTheme.pastelBlue
@@ -173,23 +178,37 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '$pct% dari target',
+                                isEmergency ? 'Dana Darurat' : 'Target Tabungan',
                                 style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  color: isEmergency
-                                      ? AppTheme.primary
-                                      : AppTheme.tertiary,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                  color: AppTheme.textDarkMuted,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Text(
-                          goal.targetAmount.toRupiah,
-                          style: AppTheme.monoCurrency(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Target',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  color: AppTheme.textDarkMuted,
+                                ),
+                              ),
+                              Text(
+                                goal.targetAmount.toRupiah,
+                                style: AppTheme.monoCurrency(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textDarkPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -197,12 +216,50 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
 
                     const SizedBox(height: 14),
 
+                    // Progress Header with Prominent Percentage Badge
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Progress Terkumpul',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppTheme.textDarkSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isEmergency
+                                ? AppTheme.pastelBlue
+                                : AppTheme.pastelGreen,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '$pct% Tercapai',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isEmergency
+                                  ? AppTheme.primary
+                                  : AppTheme.tertiary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+
                     // Progress Bar
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(5),
                       child: LinearProgressIndicator(
                         value: goal.progressPercentage,
-                        minHeight: 8,
+                        minHeight: 10,
                         backgroundColor: AppTheme.surfaceLightAlt,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           isEmergency ? AppTheme.primary : AppTheme.tertiary,
@@ -214,34 +271,63 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
 
                     // Bottom info & Action button
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(
-                            'Terkumpul: ${goal.currentAmount.toRupiah}',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 12,
-                              color: AppTheme.textDarkSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Saldo Terkumpul:',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  color: AppTheme.textDarkMuted,
+                                ),
+                              ),
+                              Text(
+                                goal.currentAmount.toRupiah,
+                                style: AppTheme.monoCurrency(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isEmergency
+                                      ? AppTheme.primary
+                                      : AppTheme.tertiary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: () =>
-                              _openRecordSavings(context, goal),
-                          icon: const Icon(Icons.swap_horiz_rounded, size: 14),
-                          label: const Text('Setor / Tarik'),
+                        ElevatedButton(
+                          onPressed: () => _openRecordSavings(context, goal),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.surfaceLightAlt,
                             foregroundColor: AppTheme.textDarkPrimary,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 6),
-                            textStyle: GoogleFonts.dmSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            minimumSize: const Size(0, 32),
                           ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.swap_horiz_rounded, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Setor / Tarik',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded,
+                              size: 18, color: AppTheme.textDarkMuted),
+                          tooltip: 'Hapus Target',
+                          onPressed: () => _deleteGoal(goal),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
                         ),
                       ],
                     ),
@@ -263,11 +349,10 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
       data: (debts) {
         if (debts.isEmpty) {
           return EmptyStateWidget(
-            icon: Icons.credit_card_outlined,
-            title: 'Bebas Utang & Cicilan 🎉',
-            description:
-                'Tidak ada cicilan atau tagihan paylater yang tercatat saat ini.',
-            actionLabel: 'Tambah Catatan Cicilan',
+            icon: Icons.credit_card_off_rounded,
+            title: 'Tidak Ada Catatan Utang',
+            description: 'Bagus! Catat cicilan atau pinjaman jika ada untuk memantau pelunasan.',
+            actionLabel: 'Tambah Catatan Utang',
             onAction: () => _openAddDebt(context),
           );
         }
@@ -281,30 +366,29 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
             itemBuilder: (ctx, i) {
               final debt = debts[i];
               final isPaid = debt.isPaid;
-              final pct = (debt.paidPercentage * 100).toStringAsFixed(0);
+              final pct = (debt.paidPercentage * 100).toInt();
 
               return CloudPulseCard(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: isPaid
                                 ? AppTheme.pastelGreen
-                                : AppTheme.pastelRed,
+                                : AppTheme.pastelYellow,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             isPaid
                                 ? Icons.check_circle_outline_rounded
-                                : Icons.credit_card_rounded,
+                                : Icons.credit_card_outlined,
                             size: 22,
-                            color: isPaid ? AppTheme.success : AppTheme.danger,
+                            color: isPaid ? AppTheme.success : AppTheme.warning,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -319,81 +403,164 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.textDarkPrimary,
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                isPaid ? 'LUNAS 🎉' : '$pct% terbayar',
+                                debt.debtType.displayName,
                                 style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  color: isPaid
-                                      ? AppTheme.success
-                                      : AppTheme.danger,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                  color: AppTheme.textDarkMuted,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          debt.totalAmount.toRupiah,
-                          style: AppTheme.monoCurrency(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Total Pokok',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  color: AppTheme.textDarkMuted,
+                                ),
+                              ),
+                              Text(
+                                debt.totalAmount.toRupiah,
+                                style: AppTheme.monoCurrency(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textDarkPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 14),
+
+                    // Progress Header with Prominent Percentage Badge
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isPaid ? 'Status Pelunasan' : 'Progress Terbayar',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppTheme.textDarkSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isPaid
+                                ? AppTheme.pastelGreen
+                                : AppTheme.pastelYellow,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isPaid ? '100% Lunas' : '$pct% Terbayar',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isPaid
+                                  ? AppTheme.success
+                                  : const Color(0xFFD97706),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Progress Bar
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(5),
                       child: LinearProgressIndicator(
                         value: debt.paidPercentage,
-                        minHeight: 8,
+                        minHeight: 10,
                         backgroundColor: AppTheme.surfaceLightAlt,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           isPaid ? AppTheme.success : AppTheme.warning,
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 12),
+
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(
-                            isPaid
-                                ? 'Semua cicilan lunas'
-                                : 'Sisa Utang: ${debt.remainingAmount.toRupiah}',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 12,
-                              color: isPaid
-                                  ? AppTheme.success
-                                  : AppTheme.textDarkSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isPaid ? 'Status:' : 'Sisa Utang:',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  color: AppTheme.textDarkMuted,
+                                ),
+                              ),
+                              Text(
+                                isPaid
+                                    ? 'Semua Lunas'
+                                    : debt.remainingAmount.toRupiah,
+                                style: AppTheme.monoCurrency(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isPaid
+                                      ? AppTheme.success
+                                      : AppTheme.danger,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         if (!isPaid) ...[
-                          const SizedBox(width: 8),
-                          ElevatedButton.icon(
+                          ElevatedButton(
                             onPressed: () =>
                                 _openRecordPayment(context, debt),
-                            icon: const Icon(Icons.payment_rounded, size: 14),
-                            label: const Text('Bayar Cicilan'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.surfaceLightAlt,
                               foregroundColor: AppTheme.textDarkPrimary,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6),
-                              textStyle: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              minimumSize: const Size(0, 32),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.payment_rounded, size: 14),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Bayar',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          const SizedBox(width: 4),
                         ],
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded,
+                              size: 18, color: AppTheme.textDarkMuted),
+                          tooltip: 'Hapus Utang',
+                          onPressed: () => _deleteDebt(debt),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                        ),
                       ],
                     ),
                   ],
@@ -404,6 +571,126 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
         );
       },
     );
+  }
+
+  Future<void> _deleteGoal(SavingsGoal goal) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+          side: const BorderSide(color: AppTheme.borderLightSubtle),
+        ),
+        title: Text(
+          'Hapus Target Tabungan?',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          'Apakah kamu yakin ingin menghapus target "${goal.name}"?',
+          style: GoogleFonts.dmSans(
+            color: AppTheme.textDarkSecondary,
+            fontSize: 13.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(savingsGoalsProvider.notifier).deleteSavingsGoal(goal.id);
+        if (mounted) {
+          AppTheme.showSuccessSnackBar(
+            context,
+            'Target tabungan "${goal.name}" berhasil dihapus.',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          AppTheme.showErrorSnackBar(
+            context,
+            e.toString().replaceAll('Exception: ', ''),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteDebt(Debt debt) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+          side: const BorderSide(color: AppTheme.borderLightSubtle),
+        ),
+        title: Text(
+          'Hapus Catatan Utang?',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          'Apakah kamu yakin ingin menghapus catatan utang "${debt.name}"?',
+          style: GoogleFonts.dmSans(
+            color: AppTheme.textDarkSecondary,
+            fontSize: 13.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(debtsProvider.notifier).deleteDebt(debt.id);
+        if (mounted) {
+          AppTheme.showSuccessSnackBar(
+            context,
+            'Catatan utang "${debt.name}" berhasil dihapus.',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          AppTheme.showErrorSnackBar(
+            context,
+            e.toString().replaceAll('Exception: ', ''),
+          );
+        }
+      }
+    }
   }
 
   void _openAddSavingsGoal(BuildContext context) {

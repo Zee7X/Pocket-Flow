@@ -27,6 +27,7 @@ class CategoryRepository {
     required CategoryType type,
     String? icon,
     String? color,
+    bool isFixed = false,
   }) async {
     final map = <String, dynamic>{
       'user_id': _userId,
@@ -34,6 +35,7 @@ class CategoryRepository {
       'type': type.toDbString(),
       'is_active': true,
       'is_spendable': type == CategoryType.expense,
+      'is_fixed': isFixed,
     };
     if (icon != null) map['icon'] = icon;
     if (color != null) map['color'] = color;
@@ -43,8 +45,87 @@ class CategoryRepository {
     return Category.fromJson(res);
   }
 
-  /// Delete category
+  /// Update an existing category
+  Future<Category> updateCategory({
+    required String id,
+    required String name,
+    required CategoryType type,
+    String? icon,
+    String? color,
+    bool isFixed = false,
+  }) async {
+    final map = <String, dynamic>{
+      'name': name.trim(),
+      'type': type.toDbString(),
+      'is_spendable': type == CategoryType.expense,
+      'is_fixed': isFixed,
+    };
+    if (icon != null) map['icon'] = icon;
+    if (color != null) map['color'] = color;
+
+    final res = await _client
+        .from('pf_categories')
+        .update(map)
+        .eq('id', id)
+        .eq('user_id', _userId)
+        .select()
+        .single();
+    return Category.fromJson(res);
+  }
+
+  /// Quickly update is_fixed for a category
+  Future<void> updateCategoryIsFixed({
+    required String categoryId,
+    required bool isFixed,
+  }) async {
+    await _client
+        .from('pf_categories')
+        .update({'is_fixed': isFixed})
+        .eq('id', categoryId)
+        .eq('user_id', _userId);
+  }
+
+  /// Delete category (with safe check to prevent deleting used categories)
   Future<void> deleteCategory(String categoryId) async {
+    // 1. Check if category is used in transactions
+    final txList = await _client
+        .from('pf_transactions')
+        .select('id')
+        .eq('category_id', categoryId)
+        .eq('user_id', _userId)
+        .limit(1);
+
+    if ((txList as List).isNotEmpty) {
+      throw Exception(
+          'Kategori tidak dapat dihapus karena sudah memiliki riwayat transaksi.');
+    }
+
+    // 2. Check if category is used in allocation rules
+    final ruleList = await _client
+        .from('pf_allocation_rules')
+        .select('id')
+        .eq('category_id', categoryId)
+        .eq('user_id', _userId)
+        .limit(1);
+
+    if ((ruleList as List).isNotEmpty) {
+      throw Exception(
+          'Kategori tidak dapat dihapus karena masih digunakan di aturan alokasi.');
+    }
+
+    // 3. Check if category is used in monthly budgets
+    final budgetList = await _client
+        .from('pf_monthly_budgets')
+        .select('id')
+        .eq('category_id', categoryId)
+        .eq('user_id', _userId)
+        .limit(1);
+
+    if ((budgetList as List).isNotEmpty) {
+      throw Exception(
+          'Kategori tidak dapat dihapus karena masih tercatat di budget bulanan.');
+    }
+
     await _client
         .from('pf_categories')
         .delete()

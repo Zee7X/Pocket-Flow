@@ -30,6 +30,7 @@ class Category {
   final String? icon;
   final String? color;
   final bool isDefault;
+  final bool isFixed;
   final DateTime createdAt;
 
   const Category({
@@ -40,6 +41,7 @@ class Category {
     this.icon,
     this.color,
     this.isDefault = false,
+    this.isFixed = false,
     required this.createdAt,
   });
 
@@ -52,6 +54,7 @@ class Category {
       icon: json['icon'] as String?,
       color: json['color'] as String?,
       isDefault: json['is_default'] as bool? ?? false,
+      isFixed: json['is_fixed'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -64,6 +67,7 @@ class Category {
       if (icon != null) 'icon': icon,
       if (color != null) 'color': color,
       'is_default': isDefault,
+      'is_fixed': isFixed,
     };
   }
 }

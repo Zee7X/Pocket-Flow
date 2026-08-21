@@ -15,8 +15,11 @@ class AllocationRuleRepository {
         .from('pf_allocation_rules')
         .select('*, pf_categories(name)')
         .eq('user_id', _userId)
-        .order('priority');
-    return (res as List).map((json) => AllocationRule.fromJson(json)).toList();
+        .order('priority', ascending: true);
+    final list =
+        (res as List).map((json) => AllocationRule.fromJson(json)).toList();
+    list.sort((a, b) => a.priority.compareTo(b.priority));
+    return list;
   }
 
   /// Create a new allocation rule
@@ -32,6 +35,25 @@ class AllocationRuleRepository {
     int priority = 1,
     bool isRequired = false,
   }) async {
+    // If target priority is already occupied, shift existing rules >= priority up by 1
+    final conflictingRules = await _client
+        .from('pf_allocation_rules')
+        .select('id, priority')
+        .eq('user_id', _userId)
+        .gte('priority', priority)
+        .order('priority', ascending: false);
+
+    if ((conflictingRules as List).isNotEmpty) {
+      for (final rule in conflictingRules) {
+        final currentP = (rule['priority'] as num).toInt();
+        await _client
+            .from('pf_allocation_rules')
+            .update({'priority': currentP + 1})
+            .eq('id', rule['id'])
+            .eq('user_id', _userId);
+      }
+    }
+
     final map = <String, dynamic>{
       'user_id': _userId,
       'category_id': categoryId,
@@ -39,12 +61,12 @@ class AllocationRuleRepository {
       'allocation_type': allocationType.toDbString(),
       'fixed_amount': fixedAmount,
       'percentage_base': percentageBase.toDbString(),
+      'min_amount': minAmount ?? 0,
       'priority': priority,
       'is_required': isRequired,
       'is_active': true,
     };
     if (percentage != null) map['percentage'] = percentage;
-    if (minAmount != null) map['min_amount'] = minAmount;
     if (maxAmount != null) map['max_amount'] = maxAmount;
 
     final res = await _client
@@ -55,7 +77,7 @@ class AllocationRuleRepository {
     return AllocationRule.fromJson(res);
   }
 
-  /// Update existing allocation rule
+  /// Update existing allocation rule with smart priority auto-swap
   Future<AllocationRule> updateAllocationRule({
     required String id,
     required String categoryId,
@@ -69,6 +91,38 @@ class AllocationRuleRepository {
     int priority = 1,
     bool isRequired = false,
   }) async {
+    // 1. Check existing rule's current priority
+    final existingRuleRes = await _client
+        .from('pf_allocation_rules')
+        .select('id, priority')
+        .eq('id', id)
+        .eq('user_id', _userId)
+        .maybeSingle();
+
+    if (existingRuleRes != null) {
+      final oldPriority = (existingRuleRes['priority'] as num).toInt();
+      if (oldPriority != priority) {
+        // Find any other rule that currently has the target new priority
+        final conflictingRules = await _client
+            .from('pf_allocation_rules')
+            .select('id')
+            .eq('user_id', _userId)
+            .eq('priority', priority)
+            .neq('id', id);
+
+        // Swap the conflicting rule's priority with this rule's old priority
+        if ((conflictingRules as List).isNotEmpty) {
+          for (final conflict in conflictingRules) {
+            await _client
+                .from('pf_allocation_rules')
+                .update({'priority': oldPriority})
+                .eq('id', conflict['id'])
+                .eq('user_id', _userId);
+          }
+        }
+      }
+    }
+
     final map = <String, dynamic>{
       'category_id': categoryId,
       'name': name.trim(),
@@ -76,7 +130,7 @@ class AllocationRuleRepository {
       'fixed_amount': fixedAmount,
       'percentage': percentage,
       'percentage_base': percentageBase.toDbString(),
-      'min_amount': minAmount,
+      'min_amount': minAmount ?? 0,
       'max_amount': maxAmount,
       'priority': priority,
       'is_required': isRequired,

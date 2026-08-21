@@ -64,31 +64,50 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Halo, $greetingName 👋',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textDarkPrimary,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Halo, $greetingName 👋',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textDarkPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  _getCurrentPeriod(period),
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: AppTheme.textDarkSecondary,
-                    fontWeight: FontWeight.w400,
+                  Text(
+                    _getCurrentPeriod(period),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: AppTheme.textDarkSecondary,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
         actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceLight,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.borderLightSubtle),
+              ),
+              child: const Icon(Icons.tune_rounded,
+                  size: 18, color: AppTheme.primary),
+            ),
+            tooltip: 'Aturan & Kategori',
+            onPressed: () => context.push(AppRoutes.categoriesRules),
+          ),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(8),
@@ -148,7 +167,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     const SizedBox(height: 24),
 
                     // ── 3. Category Budgets Tracker ──────────────────────────
-                    _buildCategoryBudgets(summary.categoryBudgets),
+                    _buildCategoryBudgets(summary.categoryBudgets, summary.daysRemainingInMonth),
 
                     const SizedBox(height: 24),
 
@@ -240,6 +259,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               fontSize: 12,
               color: Colors.white.withValues(alpha: 0.8),
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
           ),
 
           const SizedBox(height: 22),
@@ -399,7 +420,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       const SizedBox(height: 2),
                       Text(
                         summary.totalSpent.toRupiahCompact,
-                        style: AppTheme.monoCurrency(fontSize: 15),
+                        style: AppTheme.monoCurrency(
+                          fontSize: 15,
+                          color: summary.totalSpent > 0
+                              ? AppTheme.danger
+                              : AppTheme.textDarkPrimary,
+                        ),
                       ),
                     ],
                   ),
@@ -413,7 +439,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   // ─── 3. Category Budgets Tracker (Card Style Matching Reference) ─────────
-  Widget _buildCategoryBudgets(List<MonthlyBudget> budgets) {
+  Widget _buildCategoryBudgets(List<MonthlyBudget> budgets, int daysRemaining) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -482,81 +508,127 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               final isOverBudget = budget.isOverBudget;
               final pct = (budget.spentPercentage * 100).toStringAsFixed(0);
 
-              return CloudPulseCard(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: isOverBudget
-                                ? AppTheme.pastelRed
-                                : AppTheme.pastelBlue,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isOverBudget
-                                ? Icons.warning_amber_rounded
-                                : Icons.folder_outlined,
-                            size: 15,
-                            color: isOverBudget
-                                ? AppTheme.danger
-                                : AppTheme.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            budget.categoryName ?? 'Kategori',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textDarkPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${budget.spentAmount.toRupiah} / ${budget.allocatedAmount.toRupiah}',
-                          style: AppTheme.monoCurrency(fontSize: 11.5),
-                        ),
-                      ],
+              // Daily limit — only for variable expense categories
+              final isDailyTrackable = budget.isDailyTrackable;
+              final dailyLimit = isDailyTrackable && daysRemaining > 0
+                  ? (budget.remainingAmount / daysRemaining).floor()
+                  : 0;
+
+              return InkWell(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                onTap: () {
+                  final initialAmount = budget.categoryIsFixed
+                      ? (budget.remainingAmount > 0
+                          ? budget.remainingAmount
+                          : budget.allocatedAmount)
+                      : null;
+
+                  showDialog(
+                    context: context,
+                    builder: (_) => AddTransactionDialog(
+                      initialType: TransactionType.expense,
+                      initialCategoryId: budget.categoryId,
+                      initialAmount: initialAmount,
                     ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: budget.spentPercentage.clamp(0.0, 1.0),
-                        minHeight: 6,
-                        backgroundColor: AppTheme.surfaceLightAlt,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isOverBudget
-                              ? AppTheme.danger
-                              : budget.spentPercentage > 0.8
-                                  ? AppTheme.warning
+                  );
+                },
+                child: CloudPulseCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: isOverBudget
+                                  ? AppTheme.pastelRed
+                                  : AppTheme.pastelBlue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isOverBudget
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.folder_outlined,
+                              size: 15,
+                              color: isOverBudget
+                                  ? AppTheme.danger
                                   : AppTheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              budget.categoryName ?? 'Kategori',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textDarkPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: RichText(
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: budget.spentAmount.toRupiah,
+                                    style: AppTheme.monoCurrency(
+                                      fontSize: 11.5,
+                                      color: budget.spentAmount > 0
+                                          ? AppTheme.danger
+                                          : AppTheme.textDarkPrimary,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: ' / ${budget.allocatedAmount.toRupiah}',
+                                    style: AppTheme.monoCurrency(
+                                      fontSize: 11.5,
+                                      color: AppTheme.textDarkMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: budget.spentPercentage.clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: AppTheme.surfaceLightAlt,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            isOverBudget
+                                ? AppTheme.danger
+                                : budget.spentPercentage > 0.8
+                                    ? AppTheme.warning
+                                    : AppTheme.primary,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '$pct% terpakai',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            color: isOverBudget
-                                ? AppTheme.danger
-                                : AppTheme.textDarkSecondary,
-                            fontWeight: isOverBudget
-                                ? FontWeight.w600
-                                : FontWeight.normal,
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '$pct% terpakai',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: isOverBudget
+                                  ? AppTheme.danger
+                                  : AppTheme.textDarkSecondary,
+                              fontWeight: isOverBudget
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -578,11 +650,78 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ),
                       ],
                     ),
+
+                    // ── Daily limit / Fixed badge ────────────────────────────
+                    const SizedBox(height: 8),
+                    if (isDailyTrackable)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isOverBudget
+                              ? AppTheme.pastelRed
+                              : AppTheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                          border: Border.all(
+                            color: isOverBudget
+                                ? AppTheme.danger.withValues(alpha: 0.3)
+                                : AppTheme.primary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isOverBudget
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.today_rounded,
+                              size: 13,
+                              color: isOverBudget
+                                  ? AppTheme.danger
+                                  : AppTheme.primary,
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                isOverBudget
+                                    ? 'Melebihi budget!'
+                                    : 'Maks hari ini: ${dailyLimit.toRupiah}',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isOverBudget
+                                      ? AppTheme.danger
+                                      : AppTheme.primary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (budget.categoryIsFixed)
+                      Row(
+                        children: [
+                          Icon(Icons.push_pin_rounded,
+                              size: 12, color: AppTheme.textDarkMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Biaya Tetap',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: AppTheme.textDarkMuted,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-              );
-            },
+              ),
+            );
+          },
           ),
+
       ],
     );
   }
@@ -684,11 +823,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ],
                       ),
                     ),
-                    Text(
-                      '${isExpense ? '-' : '+'}${tx.amount.toRupiah}',
-                      style: AppTheme.monoCurrency(
-                        fontSize: 14,
-                        color: isExpense ? AppTheme.danger : AppTheme.success,
+                    Flexible(
+                      child: Text(
+                        '${isExpense ? '-' : '+'}${tx.amount.toRupiah}',
+                        style: AppTheme.monoCurrency(
+                          fontSize: 14,
+                          color: isExpense ? AppTheme.danger : AppTheme.success,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
                       ),
                     ),
                   ],

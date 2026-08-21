@@ -115,45 +115,43 @@ class _LoginPageState extends ConsumerState<LoginPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // PocketFlow Official Logo
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            'assets/images/logo.png',
-            height: 48,
-            fit: BoxFit.contain,
-            errorBuilder: (ctx, err, stack) => Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.account_balance_wallet_rounded,
-                    color: AppTheme.primary,
-                    size: 24,
-                  ),
+        Image.asset(
+          'assets/images/logo.png',
+          height: 42,
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
+          errorBuilder: (ctx, err, stack) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(width: 10),
-                Text(
-                  'PocketFlow',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.primary,
-                  ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: AppTheme.primary,
+                  size: 24,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'PocketFlow',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
         Text(
           'Selamat datang\nkembali 👋',
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 30,
+            fontSize: 28,
             fontWeight: FontWeight.w700,
             color: AppTheme.textDarkPrimary,
             height: 1.2,
@@ -163,7 +161,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
         Text(
           'Masuk untuk memonitor dan mengalokasikan keuanganmu.',
           style: GoogleFonts.dmSans(
-            fontSize: 15,
+            fontSize: 14.5,
             color: AppTheme.textDarkSecondary,
             height: 1.5,
           ),

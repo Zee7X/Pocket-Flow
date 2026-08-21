@@ -1,9 +1,15 @@
 // lib/features/debts_savings/presentation/widgets/record_savings_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../categories_rules/domain/category.dart';
+import '../../../categories_rules/presentation/providers/categories_rules_provider.dart';
+import '../../../transactions/domain/transaction.dart';
+import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../domain/savings_goal.dart';
 import '../../domain/savings_transaction.dart';
 import '../providers/debts_savings_provider.dart';
@@ -36,13 +42,14 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
         side: const BorderSide(color: AppTheme.borderLightSubtle),
       ),
       title: Text(
-        'Setor / Tarik Tabungan',
+        'Setor / Tarik: ${widget.goal.name}',
         style: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -55,29 +62,22 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Target: ${widget.goal.name}',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: AppTheme.textDarkSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Deposit or Withdrawal switch
+              // Segmented Type Selector
               Row(
                 children: [
                   Expanded(
                     child: ChoiceChip(
-                      label: Center(child: Text('Setor Dana', style: GoogleFonts.dmSans())),
+                      showCheckmark: false,
+                      label: const Center(child: Text('Setor (Tambah)')),
                       selected: _type == SavingsTransactionType.deposit,
-                      selectedColor: AppTheme.tertiary.withValues(alpha: 0.25),
-                      labelStyle: TextStyle(
+                      selectedColor: AppTheme.tertiary,
+                      backgroundColor: AppTheme.surfaceLight,
+                      labelStyle: GoogleFonts.dmSans(
                         color: _type == SavingsTransactionType.deposit
-                            ? AppTheme.tertiary
-                            : AppTheme.textDarkMuted,
+                            ? Colors.white
+                            : AppTheme.textDarkSecondary,
                         fontWeight: FontWeight.w600,
+                        fontSize: 12,
                       ),
                       onSelected: (v) {
                         if (v) setState(() => _type = SavingsTransactionType.deposit);
@@ -87,14 +87,17 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ChoiceChip(
-                      label: Center(child: Text('Tarik Dana', style: GoogleFonts.dmSans())),
+                      showCheckmark: false,
+                      label: const Center(child: Text('Tarik Dana')),
                       selected: _type == SavingsTransactionType.withdrawal,
-                      selectedColor: AppTheme.warning.withValues(alpha: 0.25),
-                      labelStyle: TextStyle(
+                      selectedColor: AppTheme.warning,
+                      backgroundColor: AppTheme.surfaceLight,
+                      labelStyle: GoogleFonts.dmSans(
                         color: _type == SavingsTransactionType.withdrawal
-                            ? AppTheme.warning
-                            : AppTheme.textDarkMuted,
+                            ? Colors.white
+                            : AppTheme.textDarkSecondary,
                         fontWeight: FontWeight.w600,
+                        fontSize: 12,
                       ),
                       onSelected: (v) {
                         if (v) setState(() => _type = SavingsTransactionType.withdrawal);
@@ -108,15 +111,19 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
               TextFormField(
                 controller: _amountCtrl,
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  CurrencyInputFormatter(),
+                ],
                 style: AppTheme.monoCurrency(fontSize: 16),
                 decoration: const InputDecoration(
                   labelText: 'Nominal (Rp)',
+                  hintText: 'misal: 500.000',
                   prefixText: 'Rp ',
                 ),
                 validator: (v) {
-                  final clean = v?.replaceAll('.', '') ?? '';
-                  final val = int.tryParse(clean);
-                  if (val == null || val <= 0) return 'Nominal harus > 0';
+                  final val = CurrencyInputFormatter.parse(v);
+                  if (val <= 0) return 'Nominal harus > 0';
                   return null;
                 },
               ),
@@ -152,19 +159,72 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = int.parse(_amountCtrl.text.replaceAll('.', ''));
+    final amount = CurrencyInputFormatter.parse(_amountCtrl.text);
+    final isDeposit = _type == SavingsTransactionType.deposit;
 
-    ref.read(savingsGoalsProvider.notifier).recordSavingsTransaction(
-          savingsGoalId: widget.goal.id,
-          type: _type,
-          amount: amount,
-          transactionDate: _date,
-          note: _noteCtrl.text.isNotEmpty ? _noteCtrl.text : null,
+    try {
+      await ref.read(savingsGoalsProvider.notifier).recordSavingsTransaction(
+            savingsGoalId: widget.goal.id,
+            type: _type,
+            amount: amount,
+            transactionDate: _date,
+            note: _noteCtrl.text.isNotEmpty ? _noteCtrl.text : null,
+          );
+
+      // Auto sync deposit to transactions (records an expense in saving category)
+      if (isDeposit) {
+        try {
+          final categories = ref.read(categoriesProvider).value ?? [];
+          final isEmergency = widget.goal.goalType == GoalType.emergencyFund;
+          final savingCategory = categories.cast<Category?>().firstWhere(
+            (c) =>
+                c != null &&
+                ((isEmergency && c.name.toLowerCase().contains('darurat')) ||
+                    (!isEmergency && c.name.toLowerCase().contains('tabung')) ||
+                    c.name.toLowerCase().contains('saving') ||
+                    c.name.toLowerCase().contains('invest')),
+            orElse: () => categories.cast<Category?>().firstWhere(
+              (c) =>
+                  c != null &&
+                  (c.name.toLowerCase().contains('tabung') ||
+                      c.name.toLowerCase().contains('darurat')),
+              orElse: () => categories.isNotEmpty ? categories.first : null,
+            ),
+          );
+
+          if (savingCategory != null) {
+            await ref.read(transactionsProvider.notifier).addTransaction(
+                  categoryId: savingCategory.id,
+                  type: TransactionType.expense,
+                  amount: amount,
+                  transactionDate: _date,
+                  description:
+                      'Setor: ${widget.goal.name}${_noteCtrl.text.isNotEmpty ? " (${_noteCtrl.text})" : ""}',
+                  paymentMethod: 'Transfer Bank',
+                );
+          }
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        AppTheme.showSuccessSnackBar(
+          context,
+          isDeposit
+              ? 'Setoran tabungan & transaksi berhasil dicatat!'
+              : 'Penarikan tabungan berhasil dicatat!',
         );
-
-    Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppTheme.showErrorSnackBar(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    }
   }
 }

@@ -1,22 +1,33 @@
 // lib/features/transactions/presentation/widgets/add_transaction_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/extensions/currency_extension.dart';
+import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../categories_rules/domain/category.dart';
 import '../../../categories_rules/presentation/providers/categories_rules_provider.dart';
+import '../../../debts_savings/domain/savings_transaction.dart';
+import '../../../debts_savings/presentation/providers/debts_savings_provider.dart';
+import '../../../salary_allocation/presentation/providers/salary_allocation_provider.dart';
 import '../../domain/transaction.dart';
 import '../providers/transactions_provider.dart';
 
 class AddTransactionDialog extends ConsumerStatefulWidget {
   final TransactionType initialType;
   final TransactionModel? initialTransaction;
+  final String? initialCategoryId;
+  final int? initialAmount;
 
   const AddTransactionDialog({
     super.key,
     this.initialType = TransactionType.expense,
     this.initialTransaction,
+    this.initialCategoryId,
+    this.initialAmount,
   });
 
   @override
@@ -30,6 +41,8 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
   late final TextEditingController _descCtrl;
   late TransactionType _type;
   String? _selectedCategoryId;
+  String? _linkedDebtId;
+  String? _linkedGoalId;
   late DateTime _transactionDate;
   late String _paymentMethod;
 
@@ -40,16 +53,23 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
     super.initState();
     final init = widget.initialTransaction;
     if (init != null) {
-      _amountCtrl = TextEditingController(text: init.amount.toString());
+      _amountCtrl = TextEditingController(
+        text: CurrencyInputFormatter.format(init.amount),
+      );
       _descCtrl = TextEditingController(text: init.description ?? '');
       _type = init.type;
       _selectedCategoryId = init.categoryId;
       _transactionDate = init.transactionDate;
       _paymentMethod = init.paymentMethod ?? 'Cash';
     } else {
-      _amountCtrl = TextEditingController();
+      _amountCtrl = TextEditingController(
+        text: (widget.initialAmount != null && widget.initialAmount! > 0)
+            ? CurrencyInputFormatter.format(widget.initialAmount!)
+            : '',
+      );
       _descCtrl = TextEditingController();
       _type = widget.initialType;
+      _selectedCategoryId = widget.initialCategoryId;
       _transactionDate = DateTime.now();
       _paymentMethod = 'Cash';
     }
@@ -70,8 +90,35 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
     final filteredCategories =
         categories.where((c) => c.type.toDbString() == _type.toDbString()).toList();
 
+    final debtsAsync = ref.watch(debtsProvider);
+    final activeDebts =
+        (debtsAsync.value ?? []).where((d) => !d.isPaid).toList();
+
+    final goalsAsync = ref.watch(savingsGoalsProvider);
+    final activeGoals =
+        (goalsAsync.value ?? []).where((g) => !g.isCompleted).toList();
+
+    final selectedCategory = categories.cast<Category?>().firstWhere(
+          (c) => c?.id == _selectedCategoryId,
+          orElse: () => null,
+        );
+
+    final isDebtCategory = selectedCategory != null &&
+        (selectedCategory.name.toLowerCase().contains('utang') ||
+            selectedCategory.name.toLowerCase().contains('cicilan') ||
+            selectedCategory.name.toLowerCase().contains('pinjaman') ||
+            selectedCategory.name.toLowerCase().contains('kpr') ||
+            selectedCategory.name.toLowerCase().contains('paylater'));
+
+    final isSavingCategory = selectedCategory != null &&
+        (selectedCategory.name.toLowerCase().contains('tabung') ||
+            selectedCategory.name.toLowerCase().contains('darurat') ||
+            selectedCategory.name.toLowerCase().contains('invest') ||
+            selectedCategory.name.toLowerCase().contains('saving'));
+
     return AlertDialog(
       scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
@@ -113,7 +160,12 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
                       fontWeight: FontWeight.w600,
                     ),
                     onSelected: (v) {
-                      if (v) setState(() => _type = TransactionType.expense);
+                      if (v) {
+                        setState(() {
+                          _type = TransactionType.expense;
+                          _selectedCategoryId = null;
+                        });
+                      }
                     },
                   ),
                 ),
@@ -137,7 +189,14 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
                       fontWeight: FontWeight.w600,
                     ),
                     onSelected: (v) {
-                      if (v) setState(() => _type = TransactionType.income);
+                      if (v) {
+                        setState(() {
+                          _type = TransactionType.income;
+                          _selectedCategoryId = null;
+                          _linkedDebtId = null;
+                          _linkedGoalId = null;
+                        });
+                      }
                     },
                   ),
                 ),
@@ -149,16 +208,19 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             TextFormField(
               controller: _amountCtrl,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                CurrencyInputFormatter(),
+              ],
               style: AppTheme.monoCurrency(fontSize: 18),
               decoration: const InputDecoration(
                 labelText: 'Nominal (Rp)',
-                hintText: '50000',
+                hintText: '50.000',
                 prefixText: 'Rp ',
               ),
               validator: (v) {
-                final clean = v?.replaceAll('.', '').replaceAll(',', '') ?? '';
-                final val = int.tryParse(clean);
-                if (val == null || val <= 0) return 'Nominal harus > 0';
+                final val = CurrencyInputFormatter.parse(v);
+                if (val <= 0) return 'Nominal harus > 0';
                 return null;
               },
             ),
@@ -184,9 +246,95 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
                   ),
                 );
               }).toList(),
-              onChanged: (val) => setState(() => _selectedCategoryId = val),
+              onChanged: (val) {
+                setState(() {
+                  _selectedCategoryId = val;
+                  _linkedDebtId = null;
+                  _linkedGoalId = null;
+                });
+              },
             ),
             const SizedBox(height: 14),
+
+            // Optional Linked Debt Dropdown
+            if (_type == TransactionType.expense &&
+                activeDebts.isNotEmpty &&
+                (isDebtCategory || _linkedDebtId != null)) ...[
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _linkedDebtId,
+                decoration: const InputDecoration(
+                  labelText: 'Potong Catatan Pinjaman',
+                  suffixIcon: Tooltip(
+                    message:
+                        'Jika dipilih, sisa pokok pinjaman tersebut akan otomatis berkurang.',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Icon(Icons.help_outline_rounded,
+                        size: 18, color: AppTheme.textDarkMuted),
+                  ),
+                ),
+                hint: Text(
+                  'Pilih Utang (opsional)',
+                  style: GoogleFonts.dmSans(color: AppTheme.textDarkMuted),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Jangan hubungkan ke utang tertentu'),
+                  ),
+                  ...activeDebts.map((d) => DropdownMenuItem(
+                        value: d.id,
+                        child: Text(
+                          '${d.name} (Sisa: ${d.remainingAmount.toRupiah})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      )),
+                ],
+                onChanged: (val) => setState(() => _linkedDebtId = val),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Optional Linked Savings Goal Dropdown
+            if (_type == TransactionType.expense &&
+                activeGoals.isNotEmpty &&
+                (isSavingCategory || _linkedGoalId != null)) ...[
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _linkedGoalId,
+                decoration: const InputDecoration(
+                  labelText: 'Setor ke Target Tabungan',
+                  suffixIcon: Tooltip(
+                    message:
+                        'Jika dipilih, saldo terkumpul pada target tersebut akan otomatis bertambah.',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Icon(Icons.help_outline_rounded,
+                        size: 18, color: AppTheme.textDarkMuted),
+                  ),
+                ),
+                hint: Text(
+                  'Pilih Target (opsional)',
+                  style: GoogleFonts.dmSans(color: AppTheme.textDarkMuted),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Jangan hubungkan ke target tertentu'),
+                  ),
+                  ...activeGoals.map((g) => DropdownMenuItem(
+                        value: g.id,
+                        child: Text(
+                          '${g.name} (Terkumpul: ${g.currentAmount.toRupiah})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      )),
+                ],
+                onChanged: (val) => setState(() => _linkedGoalId = val),
+              ),
+              const SizedBox(height: 14),
+            ],
 
             // Description
             TextFormField(
@@ -279,18 +427,25 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount =
-        int.parse(_amountCtrl.text.replaceAll('.', '').replaceAll(',', ''));
+    final amount = CurrencyInputFormatter.parse(_amountCtrl.text);
     final isEditing = widget.initialTransaction != null;
 
     if (_type == TransactionType.expense && !isEditing) {
       final txList = ref.read(transactionsProvider).value ?? [];
+      final budgetsList = ref.read(monthlyBudgetsProvider).value ?? [];
+      final salaryHistory = ref.read(salaryHistoryProvider).value ?? [];
+
+      final hasSalaryBudget = budgetsList.isNotEmpty;
+      final hasSalaryEntry = salaryHistory.any((s) =>
+          s.periodMonth == _transactionDate.month &&
+          s.periodYear == _transactionDate.year);
+
       final hasIncome = txList.any((t) =>
           t.type == TransactionType.income &&
           t.transactionDate.month == _transactionDate.month &&
           t.transactionDate.year == _transactionDate.year);
 
-      if (!hasIncome) {
+      if (!hasSalaryBudget && !hasSalaryEntry && !hasIncome) {
         _showNoIncomeWarning(context, amount);
         return;
       }
@@ -299,30 +454,78 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
     _executeSave(amount, isEditing: isEditing);
   }
 
-  void _executeSave(int amount, {required bool isEditing}) {
-    if (isEditing) {
-      ref.read(transactionsProvider.notifier).editTransaction(
-            id: widget.initialTransaction!.id,
-            categoryId: _selectedCategoryId,
-            type: _type,
-            amount: amount,
-            transactionDate: _transactionDate,
-            description: _descCtrl.text.isNotEmpty ? _descCtrl.text : null,
-            paymentMethod: _paymentMethod,
-          );
-    } else {
-      ref.read(transactionsProvider.notifier).addTransaction(
-            categoryId: _selectedCategoryId,
-            type: _type,
-            amount: amount,
-            transactionDate: _transactionDate,
-            description: _descCtrl.text.isNotEmpty ? _descCtrl.text : null,
-            paymentMethod: _paymentMethod,
-          );
-    }
+  Future<void> _executeSave(int amount, {required bool isEditing}) async {
+    try {
+      if (isEditing) {
+        await ref.read(transactionsProvider.notifier).editTransaction(
+              id: widget.initialTransaction!.id,
+              categoryId: _selectedCategoryId,
+              type: _type,
+              amount: amount,
+              transactionDate: _transactionDate,
+              description: _descCtrl.text.isNotEmpty ? _descCtrl.text : null,
+              paymentMethod: _paymentMethod,
+            );
+      } else {
+        await ref.read(transactionsProvider.notifier).addTransaction(
+              categoryId: _selectedCategoryId,
+              type: _type,
+              amount: amount,
+              transactionDate: _transactionDate,
+              description: _descCtrl.text.isNotEmpty ? _descCtrl.text : null,
+              paymentMethod: _paymentMethod,
+            );
 
-    if (mounted) {
-      Navigator.pop(context);
+        // Bi-directional sync: trigger payment on linked debt
+        if (_linkedDebtId != null) {
+          try {
+            await ref.read(debtsProvider.notifier).recordPayment(
+                  debtId: _linkedDebtId!,
+                  amount: amount,
+                  paymentDate: _transactionDate,
+                  note: _descCtrl.text.isNotEmpty
+                      ? _descCtrl.text
+                      : 'Dari Transaksi Pengeluaran',
+                );
+          } catch (_) {}
+        }
+
+        // Bi-directional sync: trigger deposit on linked savings goal
+        if (_linkedGoalId != null) {
+          try {
+            await ref.read(savingsGoalsProvider.notifier).recordSavingsTransaction(
+                  savingsGoalId: _linkedGoalId!,
+                  type: SavingsTransactionType.deposit,
+                  amount: amount,
+                  transactionDate: _transactionDate,
+                  note: _descCtrl.text.isNotEmpty
+                      ? _descCtrl.text
+                      : 'Dari Transaksi Tabungan',
+                );
+          } catch (_) {}
+        }
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        AppTheme.showSuccessSnackBar(
+          context,
+          isEditing
+              ? 'Transaksi berhasil diperbarui!'
+              : (_linkedDebtId != null
+                  ? 'Transaksi & pemotongan utang berhasil dicatat!'
+                  : (_linkedGoalId != null
+                      ? 'Transaksi & setoran tabungan berhasil dicatat!'
+                      : 'Transaksi berhasil dicatat!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppTheme.showErrorSnackBar(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+        );
+      }
     }
   }
 

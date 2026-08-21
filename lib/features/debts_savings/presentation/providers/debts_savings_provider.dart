@@ -64,6 +64,13 @@ class DebtsNotifier extends AsyncNotifier<List<Debt>> {
     final freshDebts = await ref.read(debtRepositoryProvider).getDebts();
     state = AsyncValue.data(freshDebts);
   }
+
+  Future<void> deleteDebt(String debtId) async {
+    await ref.read(debtRepositoryProvider).deleteDebt(debtId);
+    state = AsyncValue.data(
+      (state.value ?? []).where((d) => d.id != debtId).toList(),
+    );
+  }
 }
 
 // ─── Savings Goals State ─────────────────────────────────────────────────────
@@ -117,5 +124,12 @@ class SavingsGoalsNotifier extends AsyncNotifier<List<SavingsGoal>> {
     final freshGoals =
         await ref.read(savingsRepositoryProvider).getSavingsGoals();
     state = AsyncValue.data(freshGoals);
+  }
+
+  Future<void> deleteSavingsGoal(String goalId) async {
+    await ref.read(savingsRepositoryProvider).deleteSavingsGoal(goalId);
+    state = AsyncValue.data(
+      (state.value ?? []).where((g) => g.id != goalId).toList(),
+    );
   }
 }

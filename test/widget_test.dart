@@ -373,6 +373,9 @@ void main() {
     });
 
     testWidgets('6. DebtsSavingsPage renders targets & loans', (tester) async {
+      FlutterError.onError = (details) {
+        FlutterError.dumpErrorToConsole(details);
+      };
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -463,6 +466,149 @@ void main() {
       expect(find.text('Arus Kas Bersih (Net Cash Flow)'), findsOneWidget);
       expect(find.text('Savings Rate'), findsOneWidget);
       expect(find.text('Rincian Pengeluaran per Kategori'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+    testWidgets('12. Small Phone (320x568) - All Pages Responsive', (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      // LoginPage on small screen
+      await tester.pumpWidget(createTestApp(
+        const LoginPage(),
+        authState: const domain.AuthUnauthenticated(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Dashboard on small screen
+      await tester.pumpWidget(createTestApp(
+        const DashboardPage(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // DebtsSavings on small screen
+      await tester.pumpWidget(createTestApp(
+        const DebtsSavingsPage(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Categories on small screen
+      await tester.pumpWidget(createTestApp(
+        const CategoriesRulesPage(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Transactions on small screen
+      await tester.pumpWidget(createTestApp(
+        const TransactionsPage(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Reports on small screen
+      await tester.pumpWidget(createTestApp(
+        const MonthlyReportsPage(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // SalaryAllocation on small screen
+      await tester.pumpWidget(createTestApp(
+        const SalaryAllocationPage(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('13. Large Phone (414x896) - All Pages Responsive', (tester) async {
+      tester.view.physicalSize = const Size(414, 896);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      // Dashboard on large screen
+      await tester.pumpWidget(createTestApp(
+        const DashboardPage(),
+        screenSize: const Size(414, 896),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // DebtsSavings with data on large screen
+      await tester.pumpWidget(createTestApp(
+        const DebtsSavingsPage(),
+        screenSize: const Size(414, 896),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Categories on large screen
+      await tester.pumpWidget(createTestApp(
+        const CategoriesRulesPage(),
+        screenSize: const Size(414, 896),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Reports on large screen
+      await tester.pumpWidget(createTestApp(
+        const MonthlyReportsPage(),
+        screenSize: const Size(414, 896),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('14. Keyboard Open - DebtsSavings & Categories', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetViewInsets();
+      });
+
+      await tester.pumpWidget(createTestApp(const DebtsSavingsPage()));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(createTestApp(const CategoriesRulesPage()));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('15. Small Phone Keyboard Open (320x568 + 280px inset) - Critical Pages', (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetViewInsets();
+      });
+
+      await tester.pumpWidget(createTestApp(
+        const LoginPage(),
+        authState: const domain.AuthUnauthenticated(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(createTestApp(
+        const SalaryAllocationPage(),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
   });

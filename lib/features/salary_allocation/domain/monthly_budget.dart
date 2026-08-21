@@ -13,6 +13,7 @@ class MonthlyBudget {
   final String? categoryType;
   final String? categoryIcon;
   final String? categoryColor;
+  final bool categoryIsFixed;
 
   const MonthlyBudget({
     required this.id,
@@ -28,12 +29,18 @@ class MonthlyBudget {
     this.categoryType,
     this.categoryIcon,
     this.categoryColor,
+    this.categoryIsFixed = false,
   });
 
   int get remainingAmount => allocatedAmount - spentAmount;
   double get spentPercentage =>
       allocatedAmount > 0 ? (spentAmount / allocatedAmount).clamp(0.0, 1.0) : 0.0;
   bool get isOverBudget => spentAmount > allocatedAmount;
+
+  /// Only variable expense categories should show daily spending limit.
+  /// Fixed costs (rent, utilities) are excluded.
+  bool get isDailyTrackable =>
+      (categoryType == 'expense') && !categoryIsFixed;
 
   factory MonthlyBudget.fromJson(Map<String, dynamic> json) {
     final cat = json['pf_categories'] as Map<String, dynamic>?;
@@ -51,6 +58,7 @@ class MonthlyBudget {
       categoryType: cat?['type'] as String?,
       categoryIcon: cat?['icon'] as String?,
       categoryColor: cat?['color'] as String?,
+      categoryIsFixed: cat?['is_fixed'] as bool? ?? false,
     );
   }
 }

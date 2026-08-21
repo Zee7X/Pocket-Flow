@@ -86,4 +86,18 @@ class DebtRepository {
         .order('payment_date', ascending: false);
     return (res as List).map((json) => DebtPayment.fromJson(json)).toList();
   }
+
+  /// Delete a debt item
+  Future<void> deleteDebt(String debtId) async {
+    await _client
+        .from('pf_debt_payments')
+        .delete()
+        .eq('debt_id', debtId)
+        .eq('user_id', _userId);
+    await _client
+        .from('pf_debts')
+        .delete()
+        .eq('id', debtId)
+        .eq('user_id', _userId);
+  }
 }

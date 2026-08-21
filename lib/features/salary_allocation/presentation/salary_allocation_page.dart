@@ -1,11 +1,14 @@
-// lib/features/salary_allocation/presentation/salary_allocation_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
+import '../../../core/formatters/currency_input_formatter.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/responsive_center.dart';
@@ -54,6 +57,23 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
           'Alokasi Gaji',
           style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
         ),
+        actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.pastelBlue,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.borderLightSubtle),
+              ),
+              child: const Icon(Icons.tune_rounded,
+                  size: 18, color: AppTheme.primary),
+            ),
+            tooltip: 'Atur Aturan & Kategori',
+            onPressed: () => context.push(AppRoutes.categoriesRules),
+          ),
+          const SizedBox(width: 12),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -66,7 +86,64 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                 // ── Input Gaji Hero Card ───────────────────────────────────
                 _buildSalaryInputCard(isLoading),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
+
+                // ── Shortcut Hint Banner ──────────────────────────────────
+                InkWell(
+                  onTap: () => context.push(AppRoutes.categoriesRules),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceLight,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      border: Border.all(color: AppTheme.borderLightSubtle),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.pastelBlue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.auto_awesome_rounded,
+                              size: 16, color: AppTheme.primary),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ingin Budget Terbagi Otomatis?',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textDarkPrimary,
+                                ),
+                              ),
+                              Text(
+                                'Gunakan Template Onboarding atau atur target per kategori.',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: AppTheme.textDarkSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: AppTheme.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
 
                 // ── Riwayat Alokasi Gaji ───────────────────────────────────
                 Text(
@@ -142,6 +219,10 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
             TextFormField(
               controller: _salaryCtrl,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                CurrencyInputFormatter(),
+              ],
               style: AppTheme.monoCurrency(fontSize: 18),
               decoration: const InputDecoration(
                 labelText: 'Nominal Gaji Bersih (Take Home Pay)',
@@ -150,9 +231,8 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
               ),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Nominal gaji wajib diisi';
-                final clean = v.replaceAll('.', '').replaceAll(',', '');
-                final amount = int.tryParse(clean);
-                if (amount == null || amount <= 0) {
+                final amount = CurrencyInputFormatter.parse(v);
+                if (amount <= 0) {
                   return 'Masukkan nominal yang valid';
                 }
                 return null;
@@ -342,12 +422,16 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                       ],
                     ),
                   ),
-                  Text(
-                    entry.amount.toRupiah,
-                    style: AppTheme.monoCurrency(
-                      color: AppTheme.primary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                  Flexible(
+                    child: Text(
+                      entry.amount.toRupiah,
+                      style: AppTheme.monoCurrency(
+                        color: AppTheme.primary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
                     ),
                   ),
                 ],
@@ -362,8 +446,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
   Future<void> _previewAllocation() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final clean = _salaryCtrl.text.replaceAll('.', '').replaceAll(',', '');
-    final totalSalary = int.parse(clean);
+    final totalSalary = CurrencyInputFormatter.parse(_salaryCtrl.text);
 
     final result = await ref
         .read(salaryAllocationActionProvider.notifier)
@@ -378,7 +461,9 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: AppTheme.surfaceLight,
+        useRootNavigator: true,
+        useSafeArea: false,
+        backgroundColor: Colors.transparent,
         builder: (_) => AllocationPreviewSheet(
           result: result,
           onConfirm: () async {

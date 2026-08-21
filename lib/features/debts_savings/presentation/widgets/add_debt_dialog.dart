@@ -1,9 +1,11 @@
 // lib/features/debts_savings/presentation/widgets/add_debt_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/formatters/currency_input_formatter.dart';
 import '../../domain/debt.dart';
 import '../providers/debts_savings_provider.dart';
 
@@ -37,6 +39,7 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
@@ -60,18 +63,26 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
                 controller: _nameCtrl,
                 style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
                 decoration: const InputDecoration(
-                  labelText: 'Nama Utang / Layanan',
-                  hintText: 'misal: SPayLater, Kredivo, KPR',
+                  labelText: 'Nama Tagihan / Pinjaman',
+                  hintText: 'misal: SPayLater, KTA, Cicilan HP',
                 ),
                 validator: (v) => v == null || v.isEmpty ? 'Nama wajib diisi' : null,
               ),
               const SizedBox(height: 14),
 
               DropdownButtonFormField<DebtType>(
+                isExpanded: true,
                 initialValue: _debtType,
-                decoration: const InputDecoration(labelText: 'Tipe'),
+                decoration: const InputDecoration(labelText: 'Tipe Utang'),
                 items: DebtType.values.map((t) {
-                  return DropdownMenuItem(value: t, child: Text(t.displayName));
+                  return DropdownMenuItem(
+                    value: t,
+                    child: Text(
+                      t.displayName,
+                      style: GoogleFonts.dmSans(),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _debtType = val);
@@ -82,58 +93,82 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
               TextFormField(
                 controller: _totalAmountCtrl,
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  CurrencyInputFormatter(),
+                ],
                 style: AppTheme.monoCurrency(fontSize: 16),
                 decoration: const InputDecoration(
                   labelText: 'Total Pokok Pinjaman (Rp)',
-                  hintText: '1000000',
+                  hintText: 'misal: 32.000.000',
                   prefixText: 'Rp ',
                 ),
-                onChanged: (v) {
-                  if (_remainingCtrl.text.isEmpty) {
-                    _remainingCtrl.text = v;
-                  }
-                },
-                validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0 ? 'Nominal > 0' : null,
+                validator: (v) =>
+                    CurrencyInputFormatter.parse(v) <= 0 ? 'Nominal > 0' : null,
               ),
               const SizedBox(height: 14),
 
               TextFormField(
                 controller: _remainingCtrl,
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  CurrencyInputFormatter(),
+                ],
                 style: AppTheme.monoCurrency(fontSize: 16),
                 decoration: const InputDecoration(
                   labelText: 'Sisa Utang Saat Ini (Rp)',
-                  hintText: '1000000',
+                  hintText: 'misal: 32.000.000',
                   prefixText: 'Rp ',
+                  suffixIcon: Tooltip(
+                    message: 'Bisa dikosongkan jika utang baru (otomatis sama dengan pokok pinjaman)',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Icon(Icons.help_outline_rounded, size: 18, color: AppTheme.textDarkMuted),
+                  ),
                 ),
-                validator: (v) => (int.tryParse(v ?? '') ?? 0) < 0 ? 'Nominal >= 0' : null,
+                validator: (v) {
+                  if (v != null && v.isNotEmpty) {
+                    final rem = CurrencyInputFormatter.parse(v);
+                    if (rem < 0) return 'Nominal >= 0';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _minPaymentCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Cicilan/Bln',
-                        prefixText: 'Rp ',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _dueDayCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Jatuh Tempo Tgl',
-                        hintText: '1-31',
-                      ),
-                    ),
-                  ),
+              TextFormField(
+                controller: _minPaymentCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  CurrencyInputFormatter(),
                 ],
+                style: AppTheme.monoCurrency(fontSize: 15),
+                decoration: const InputDecoration(
+                  labelText: 'Estimasi Cicilan per Bulan (Rp)',
+                  hintText: 'misal: 500.000 (opsional)',
+                  prefixText: 'Rp ',
+                  suffixIcon: Tooltip(
+                    message: 'Opsional: estimasi cicilan bulanan untuk panduan anggaran',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Icon(Icons.help_outline_rounded, size: 18, color: AppTheme.textDarkMuted),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _dueDayCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Tanggal Jatuh Tempo Bulanan',
+                  hintText: 'misal: 25 (opsional)',
+                  suffixIcon: Tooltip(
+                    message: 'Opsional: tanggal jatuh tempo pembayaran setiap bulan (1-31)',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Icon(Icons.help_outline_rounded, size: 18, color: AppTheme.textDarkMuted),
+                  ),
+                ),
               ),
             ],
           ),
@@ -146,7 +181,7 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
         ElevatedButton(
           onPressed: _save,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.danger,
+            backgroundColor: AppTheme.warning,
             minimumSize: const Size(100, 42),
           ),
           child: const Text('Simpan'),
@@ -155,23 +190,41 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final total = int.parse(_totalAmountCtrl.text.replaceAll('.', ''));
-    final remaining = int.parse(_remainingCtrl.text.replaceAll('.', ''));
-    final minPay = int.tryParse(_minPaymentCtrl.text.replaceAll('.', '')) ?? 0;
+    final total = CurrencyInputFormatter.parse(_totalAmountCtrl.text);
+    final rawRem = _remainingCtrl.text.trim();
+    final remaining =
+        rawRem.isEmpty ? total : CurrencyInputFormatter.parse(rawRem);
+    final minPay = CurrencyInputFormatter.parse(_minPaymentCtrl.text);
     final dueDay = int.tryParse(_dueDayCtrl.text);
+    final name = _nameCtrl.text.trim();
 
-    ref.read(debtsProvider.notifier).addDebt(
-          name: _nameCtrl.text.trim(),
-          debtType: _debtType,
-          totalAmount: total,
-          remainingAmount: remaining,
-          minimumPayment: minPay,
-          dueDay: dueDay,
+    try {
+      await ref.read(debtsProvider.notifier).addDebt(
+            name: name,
+            debtType: _debtType,
+            totalAmount: total,
+            remainingAmount: remaining,
+            minimumPayment: minPay,
+            dueDay: dueDay,
+          );
+
+      if (mounted) {
+        Navigator.pop(context);
+        AppTheme.showSuccessSnackBar(
+          context,
+          'Catatan utang "$name" berhasil dibuat!',
         );
-
-    Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppTheme.showErrorSnackBar(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    }
   }
 }

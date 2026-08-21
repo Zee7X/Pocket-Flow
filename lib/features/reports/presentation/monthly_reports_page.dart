@@ -91,7 +91,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                     const SizedBox(height: 24),
 
                     // ── 4. Category Breakdown Progress List ─────────────────
-                    _buildCategoryBreakdown(report.categoryBreakdown),
+                    _buildCategoryBreakdown(report),
 
                     const SizedBox(height: 28),
                   ],
@@ -289,23 +289,54 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
   }
 
   // ─── 3. Analytic Donut Ring Chart (Matching Reference Image) ──────────────
+  // ─── 3. Analytic Donut Ring Chart with Category Legend ─────────────────────
   Widget _buildAnalyticDonutCard(MonthlyReport report) {
-    final categories = report.categoryBreakdown;
+    final activeCategories =
+        report.categoryBreakdown.where((c) => c.spentAmount > 0).toList();
+    final hasSpending = activeCategories.isNotEmpty && report.totalExpense > 0;
 
     return CloudPulseCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Analisis Pengeluaran',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textDarkPrimary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Analisis Pengeluaran',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textDarkPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (hasSpending) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: Text(
+                    '${activeCategories.length} Kategori Aktif',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 20),
+
+          // Donut Chart
           Center(
             child: SizedBox(
               width: 180,
@@ -315,7 +346,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                 children: [
                   CustomPaint(
                     size: const Size(180, 180),
-                    painter: _DonutChartPainter(categories: categories),
+                    painter: _DonutChartPainter(categories: activeCategories),
                   ),
                   Column(
                     mainAxisSize: MainAxisSize.min,
@@ -334,6 +365,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                         style: AppTheme.monoCurrency(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
+                          color: hasSpending ? AppTheme.danger : AppTheme.textDarkPrimary,
                         ),
                       ),
                     ],
@@ -342,13 +374,112 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
               ),
             ),
           ),
+
+          // Percentage Breakdown Legend List
+          if (hasSpending) ...[
+            const SizedBox(height: 20),
+            const Divider(color: AppTheme.borderLightSubtle),
+            const SizedBox(height: 12),
+            Text(
+              'Porsi Pengeluaran Bulan Ini:',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textDarkSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: activeCategories.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (ctx, i) {
+                final cat = activeCategories[i];
+                final color = _chartPalette[i % _chartPalette.length];
+                final sharePct = report.totalExpense > 0
+                    ? ((cat.spentAmount / report.totalExpense) * 100).toStringAsFixed(1)
+                    : '0';
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceLightAlt,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    border: Border.all(color: AppTheme.borderLightSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          cat.categoryName,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textDarkPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$sharePct%',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        cat.spentAmount.toRupiah,
+                        style: AppTheme.monoCurrency(
+                          fontSize: 12,
+                          color: AppTheme.danger,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                'Belum ada transaksi pengeluaran di bulan ini.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: AppTheme.textDarkMuted,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   // ─── 4. Category Breakdown List ───────────────────────────────────────────
-  Widget _buildCategoryBreakdown(List<CategorySpendingSummary> categories) {
+  Widget _buildCategoryBreakdown(MonthlyReport report) {
+    final categories = report.categoryBreakdown;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -383,30 +514,54 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                   : (cat.spentAmount > 0 ? 1.0 : 0.0);
               final pct = (ratio * 100).toStringAsFixed(0);
               final isOver = cat.isOverBudget;
+              final sharePct = report.totalExpense > 0 && cat.spentAmount > 0
+                  ? ' • ${((cat.spentAmount / report.totalExpense) * 100).toStringAsFixed(1)}% total'
+                  : '';
 
               return CloudPulseCard(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Text(
                             cat.categoryName,
                             style: GoogleFonts.plusJakartaSans(
                               fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                              fontSize: 13,
                               color: AppTheme.textDarkPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${cat.spentAmount.toRupiah} / ${cat.allocatedAmount.toRupiah}',
-                          style: AppTheme.monoCurrency(fontSize: 12),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: RichText(
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: cat.spentAmount.toRupiah,
+                                  style: AppTheme.monoCurrency(
+                                    fontSize: 11.5,
+                                    color: cat.spentAmount > 0
+                                        ? AppTheme.danger
+                                        : AppTheme.textDarkPrimary,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: ' / ${cat.allocatedAmount.toRupiah}',
+                                  style: AppTheme.monoCurrency(
+                                    fontSize: 11.5,
+                                    color: AppTheme.textDarkMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -424,20 +579,23 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                     ),
                     const SizedBox(height: 6),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '$pct% terpakai',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            color: isOver
-                                ? AppTheme.danger
-                                : AppTheme.textDarkSecondary,
-                            fontWeight: isOver
-                                ? FontWeight.w600
-                                : FontWeight.normal,
+                        Expanded(
+                          child: Text(
+                            '$pct% terpakai$sharePct',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: isOver
+                                  ? AppTheme.danger
+                                  : AppTheme.textDarkSecondary,
+                              fontWeight: isOver
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           isOver
                               ? 'Over Budget!'
@@ -449,6 +607,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                                 : AppTheme.success,
                             fontWeight: FontWeight.w500,
                           ),
+                          textAlign: TextAlign.right,
                         ),
                       ],
                     ),
@@ -532,19 +691,21 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
   }
 }
 
+const List<Color> _chartPalette = [
+  Color(0xFF2563EB), // Royal Blue
+  Color(0xFF0EA5E9), // Cyan
+  Color(0xFF10B981), // Emerald
+  Color(0xFFF59E0B), // Amber
+  Color(0xFF8B5CF6), // Violet
+  Color(0xFFEC4899), // Pink
+  Color(0xFF06B6D4), // Teal
+  Color(0xFFF97316), // Orange
+];
+
 class _DonutChartPainter extends CustomPainter {
   final List<CategorySpendingSummary> categories;
 
   _DonutChartPainter({required this.categories});
-
-  static const List<Color> _palette = [
-    Color(0xFF2563EB), // Royal Blue
-    Color(0xFF0EA5E9), // Cyan
-    Color(0xFF10B981), // Emerald
-    Color(0xFFF59E0B), // Amber
-    Color(0xFF8B5CF6), // Violet
-    Color(0xFFEC4899), // Pink
-  ];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -569,7 +730,7 @@ class _DonutChartPainter extends CustomPainter {
     for (int i = 0; i < categories.length; i++) {
       final sweepAngle = (categories[i].spentAmount / total) * 2 * math.pi;
       final paintSlice = Paint()
-        ..color = _palette[i % _palette.length]
+        ..color = _chartPalette[i % _chartPalette.length]
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;

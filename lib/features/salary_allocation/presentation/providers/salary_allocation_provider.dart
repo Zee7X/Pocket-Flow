@@ -1,6 +1,7 @@
 // lib/features/salary_allocation/presentation/providers/salary_allocation_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../data/salary_repository.dart';
 import '../../domain/monthly_budget.dart';
 import '../../domain/salary_allocation_result.dart';
@@ -88,6 +89,7 @@ class SalaryAllocationActionNotifier
       // Invalidate relevant providers
       _ref.invalidate(monthlyBudgetsProvider);
       _ref.invalidate(salaryHistoryProvider);
+      _ref.invalidate(transactionsProvider);
       return result;
     } catch (e, st) {
       state = AsyncValue.error(e, st);

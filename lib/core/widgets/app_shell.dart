@@ -154,6 +154,8 @@ class AppShell extends StatelessWidget {
   void _openQuickAddModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: false,
       backgroundColor: AppTheme.surfaceLight,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXL)),

@@ -1,8 +1,11 @@
 // lib/features/categories_rules/presentation/widgets/add_rule_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../salary_allocation/presentation/providers/salary_allocation_provider.dart';
 import '../../domain/allocation_rule.dart';
 import '../../domain/category.dart';
 import '../providers/categories_rules_provider.dart';
@@ -32,6 +35,7 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
   late AllocationType _selectedType;
   late PercentageBase _selectedBase;
   late bool _isRequired;
+  bool _isFixed = false;
 
   @override
   void initState() {
@@ -40,7 +44,9 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
     if (init != null) {
       _nameCtrl = TextEditingController(text: init.name);
       _amountCtrl = TextEditingController(
-        text: init.fixedAmount > 0 ? init.fixedAmount.toString() : '',
+        text: init.fixedAmount > 0
+            ? CurrencyInputFormatter.format(init.fixedAmount)
+            : '',
       );
       _pctCtrl = TextEditingController(
         text: init.percentage != null && init.percentage! > 0
@@ -56,15 +62,21 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
       _nameCtrl = TextEditingController();
       _amountCtrl = TextEditingController();
       _pctCtrl = TextEditingController();
-      _priorityCtrl = TextEditingController(text: '1');
       _selectedType = AllocationType.fixed;
       _selectedBase = PercentageBase.remaining;
       _isRequired = false;
       if (widget.categories.isNotEmpty) {
         _selectedCategoryId = widget.categories.first.id;
-        _nameCtrl.text = widget.categories.first.name;
       }
+      final existingRules = ref.read(allocationRulesProvider).value ?? [];
+      final nextPriority = existingRules.isEmpty
+          ? 1
+          : (existingRules.map((r) => r.priority).reduce((a, b) => a > b ? a : b) + 1);
+      _priorityCtrl = TextEditingController(text: nextPriority.toString());
     }
+
+    final cat = widget.categories.where((c) => c.id == _selectedCategoryId).firstOrNull;
+    _isFixed = cat?.isFixed ?? false;
   }
 
   @override
@@ -79,6 +91,7 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.initialRule != null;
+    final selectedCat = widget.categories.where((c) => c.id == _selectedCategoryId).firstOrNull;
 
     return AlertDialog(
       scrollable: true,
@@ -119,9 +132,9 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
                 onChanged: (val) {
                   setState(() {
                     _selectedCategoryId = val;
-                    if (!isEditing) {
-                      final cat = widget.categories.firstWhere((c) => c.id == val);
-                      _nameCtrl.text = cat.name;
+                    final cat = widget.categories.where((c) => c.id == val).firstOrNull;
+                    if (cat != null) {
+                      _isFixed = cat.isFixed;
                     }
                   });
                 },
@@ -131,8 +144,11 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
               TextFormField(
                 controller: _nameCtrl,
                 style: GoogleFonts.dmSans(color: AppTheme.textDarkPrimary),
-                decoration: const InputDecoration(labelText: 'Nama Aturan'),
-                validator: (v) => v == null || v.isEmpty ? 'Nama wajib diisi' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Aturan',
+                  hintText: 'misal: Bayar Kos, Tabungan Nikah',
+                ),
+                validator: (v) => v == null || v.trim().isEmpty ? 'Nama wajib diisi' : null,
               ),
               const SizedBox(height: 14),
 
@@ -169,18 +185,21 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
                 TextFormField(
                   controller: _amountCtrl,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyInputFormatter(),
+                  ],
                   style: AppTheme.monoCurrency(fontSize: 16),
                   decoration: InputDecoration(
                     labelText: _selectedType == AllocationType.fixed
                         ? 'Nominal Pasti (Rp)'
                         : 'Batas Maksimal (Rp)',
-                    hintText: 'misal: 1500000',
+                    hintText: 'misal: 1.500.000',
                     prefixText: 'Rp ',
                   ),
                   validator: (v) {
-                    final clean = v?.replaceAll('.', '').replaceAll(',', '') ?? '';
-                    final val = int.tryParse(clean);
-                    if (val == null || val <= 0) return 'Nominal harus > 0';
+                    final val = CurrencyInputFormatter.parse(v);
+                    if (val <= 0) return 'Nominal harus > 0';
                     return null;
                   },
                 ),
@@ -230,11 +249,22 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
               TextFormField(
                 controller: _priorityCtrl,
                 keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 style: GoogleFonts.robotoMono(color: AppTheme.textDarkPrimary),
                 decoration: const InputDecoration(
                   labelText: 'Urutan Prioritas (#)',
                   hintText: '1 (Diproses pertama)',
+                  suffixIcon: Tooltip(
+                    message: 'Nomor 1 diproses paling awal. Jika nomor sudah ada, posisi akan otomatis bertukar posisi.',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Icon(Icons.help_outline_rounded, size: 18, color: AppTheme.textDarkMuted),
+                  ),
                 ),
+                validator: (v) {
+                  final p = int.tryParse(v ?? '');
+                  if (p == null || p < 1) return 'Prioritas minimal 1';
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
 
@@ -259,6 +289,64 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
                 activeThumbColor: AppTheme.danger,
                 onChanged: (val) => setState(() => _isRequired = val),
               ),
+
+              // ── Biaya Tetap (Fixed Cost) toggle for Expense categories ──
+              if (selectedCat != null && selectedCat.type == CategoryType.expense) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _isFixed
+                        ? AppTheme.surfaceLightAlt
+                        : AppTheme.primary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    border: Border.all(
+                      color: _isFixed
+                          ? AppTheme.borderLight
+                          : AppTheme.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isFixed ? Icons.push_pin_rounded : Icons.today_rounded,
+                        size: 18,
+                        color: _isFixed ? AppTheme.textDarkMuted : AppTheme.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Biaya Tetap (Fixed Cost)',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textDarkPrimary,
+                              ),
+                            ),
+                            Text(
+                              _isFixed
+                                  ? 'Kos, listrik, cicilan — tidak perlu estimasi kuota harian'
+                                  : 'Makan, transport — tampil estimasi kuota per hari',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: AppTheme.textDarkSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _isFixed,
+                        activeThumbColor: AppTheme.primary,
+                        onChanged: (val) => setState(() => _isFixed = val),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -275,43 +363,65 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategoryId == null) return;
 
-    final fixedAmount = int.tryParse(
-          _amountCtrl.text.replaceAll('.', '').replaceAll(',', ''),
-        ) ??
-        0;
+    final fixedAmount = CurrencyInputFormatter.parse(_amountCtrl.text);
     final percentage = double.tryParse(_pctCtrl.text);
     final priority = int.tryParse(_priorityCtrl.text) ?? 1;
     final isEditing = widget.initialRule != null;
+    final ruleName = _nameCtrl.text.trim();
 
-    if (isEditing) {
-      ref.read(allocationRulesProvider.notifier).updateRule(
-            id: widget.initialRule!.id,
-            categoryId: _selectedCategoryId!,
-            name: _nameCtrl.text.trim(),
-            allocationType: _selectedType,
-            fixedAmount: fixedAmount,
-            percentage: percentage,
-            percentageBase: _selectedBase,
-            priority: priority,
-            isRequired: _isRequired,
-          );
-    } else {
-      ref.read(allocationRulesProvider.notifier).addRule(
-            categoryId: _selectedCategoryId!,
-            name: _nameCtrl.text.trim(),
-            allocationType: _selectedType,
-            fixedAmount: fixedAmount,
-            percentage: percentage,
-            percentageBase: _selectedBase,
-            priority: priority,
-            isRequired: _isRequired,
-          );
+    try {
+      if (isEditing) {
+        await ref.read(allocationRulesProvider.notifier).updateRule(
+              id: widget.initialRule!.id,
+              categoryId: _selectedCategoryId!,
+              name: ruleName,
+              allocationType: _selectedType,
+              fixedAmount: fixedAmount,
+              percentage: percentage,
+              percentageBase: _selectedBase,
+              priority: priority,
+              isRequired: _isRequired,
+            );
+      } else {
+        await ref.read(allocationRulesProvider.notifier).addRule(
+              categoryId: _selectedCategoryId!,
+              name: ruleName,
+              allocationType: _selectedType,
+              fixedAmount: fixedAmount,
+              percentage: percentage,
+              percentageBase: _selectedBase,
+              priority: priority,
+              isRequired: _isRequired,
+            );
+      }
+
+      // Sync isFixed with category if changed
+      final selectedCat = widget.categories.where((c) => c.id == _selectedCategoryId).firstOrNull;
+      if (selectedCat != null && selectedCat.isFixed != _isFixed) {
+        await ref.read(categoriesProvider.notifier).toggleCategoryIsFixed(selectedCat.id, _isFixed);
+        ref.invalidate(monthlyBudgetsProvider);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        AppTheme.showSuccessSnackBar(
+          context,
+          isEditing
+              ? 'Aturan "$ruleName" berhasil diperbarui!'
+              : 'Aturan "$ruleName" berhasil ditambahkan!',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppTheme.showErrorSnackBar(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+        );
+      }
     }
-
-    Navigator.pop(context);
   }
 }

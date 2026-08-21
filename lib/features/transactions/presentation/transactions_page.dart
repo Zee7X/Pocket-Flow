@@ -179,13 +179,17 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                   ],
                                 ),
                               ),
-                              Text(
-                                '${isExpense ? '-' : '+'}${tx.amount.toRupiah}',
-                                style: AppTheme.monoCurrency(
-                                  color: isExpense
-                                      ? AppTheme.danger
-                                      : AppTheme.success,
-                                  fontSize: 14,
+                              Flexible(
+                                child: Text(
+                                  '${isExpense ? '-' : '+'}${tx.amount.toRupiah}',
+                                  style: AppTheme.monoCurrency(
+                                    color: isExpense
+                                        ? AppTheme.danger
+                                        : AppTheme.success,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
                                 ),
                               ),
                               IconButton(
@@ -199,9 +203,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                 icon: const Icon(Icons.delete_outline_rounded,
                                     size: 16, color: AppTheme.textDarkMuted),
                                 tooltip: 'Hapus Transaksi',
-                                onPressed: () => ref
-                                    .read(transactionsProvider.notifier)
-                                    .deleteTransaction(tx.id),
+                                onPressed: () => _deleteTransaction(tx),
                               ),
                             ],
                           ),
@@ -216,6 +218,22 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _deleteTransaction(TransactionModel tx) async {
+    try {
+      await ref.read(transactionsProvider.notifier).deleteTransaction(tx.id);
+      if (mounted) {
+        AppTheme.showSuccessSnackBar(context, 'Transaksi berhasil dihapus.');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppTheme.showErrorSnackBar(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    }
   }
 
   Widget _buildFilterChip(String label, String value) {

@@ -34,15 +34,64 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
     required CategoryType type,
     String? icon,
     String? color,
+    bool isFixed = false,
   }) async {
     final newCat = await ref.read(categoryRepositoryProvider).createCategory(
           name: name,
           type: type,
           icon: icon,
           color: color,
+          isFixed: isFixed,
         );
     state = AsyncValue.data([...(state.value ?? []), newCat]);
   }
+
+  Future<void> updateCategory({
+    required String id,
+    required String name,
+    required CategoryType type,
+    String? icon,
+    String? color,
+    bool isFixed = false,
+  }) async {
+    final updated = await ref.read(categoryRepositoryProvider).updateCategory(
+          id: id,
+          name: name,
+          type: type,
+          icon: icon,
+          color: color,
+          isFixed: isFixed,
+        );
+    state = AsyncValue.data(
+      (state.value ?? []).map((c) => c.id == id ? updated : c).toList(),
+    );
+  }
+
+  Future<void> toggleCategoryIsFixed(String categoryId, bool isFixed) async {
+    await ref.read(categoryRepositoryProvider).updateCategoryIsFixed(
+          categoryId: categoryId,
+          isFixed: isFixed,
+        );
+    state = AsyncValue.data(
+      (state.value ?? []).map((c) {
+        if (c.id == categoryId) {
+          return Category(
+            id: c.id,
+            userId: c.userId,
+            name: c.name,
+            type: c.type,
+            icon: c.icon,
+            color: c.color,
+            isDefault: c.isDefault,
+            isFixed: isFixed,
+            createdAt: c.createdAt,
+          );
+        }
+        return c;
+      }).toList(),
+    );
+  }
+
 
   Future<void> deleteCategory(String categoryId) async {
     await ref.read(categoryRepositoryProvider).deleteCategory(categoryId);
@@ -90,20 +139,21 @@ class AllocationRulesNotifier extends AsyncNotifier<List<AllocationRule>> {
     int priority = 1,
     bool isRequired = false,
   }) async {
-    final newRule =
-        await ref.read(allocationRuleRepositoryProvider).createAllocationRule(
-              categoryId: categoryId,
-              name: name,
-              allocationType: allocationType,
-              fixedAmount: fixedAmount,
-              percentage: percentage,
-              percentageBase: percentageBase,
-              minAmount: minAmount,
-              maxAmount: maxAmount,
-              priority: priority,
-              isRequired: isRequired,
-            );
-    state = AsyncValue.data([...(state.value ?? []), newRule]);
+    await ref.read(allocationRuleRepositoryProvider).createAllocationRule(
+          categoryId: categoryId,
+          name: name,
+          allocationType: allocationType,
+          fixedAmount: fixedAmount,
+          percentage: percentage,
+          percentageBase: percentageBase,
+          minAmount: minAmount,
+          maxAmount: maxAmount,
+          priority: priority,
+          isRequired: isRequired,
+        );
+    final freshRules =
+        await ref.read(allocationRuleRepositoryProvider).getAllocationRules();
+    state = AsyncValue.data(freshRules);
   }
 
   Future<void> updateRule({
@@ -119,23 +169,22 @@ class AllocationRulesNotifier extends AsyncNotifier<List<AllocationRule>> {
     int priority = 1,
     bool isRequired = false,
   }) async {
-    final updatedRule =
-        await ref.read(allocationRuleRepositoryProvider).updateAllocationRule(
-              id: id,
-              categoryId: categoryId,
-              name: name,
-              allocationType: allocationType,
-              fixedAmount: fixedAmount,
-              percentage: percentage,
-              percentageBase: percentageBase,
-              minAmount: minAmount,
-              maxAmount: maxAmount,
-              priority: priority,
-              isRequired: isRequired,
-            );
-    state = AsyncValue.data(
-      (state.value ?? []).map((r) => r.id == id ? updatedRule : r).toList(),
-    );
+    await ref.read(allocationRuleRepositoryProvider).updateAllocationRule(
+          id: id,
+          categoryId: categoryId,
+          name: name,
+          allocationType: allocationType,
+          fixedAmount: fixedAmount,
+          percentage: percentage,
+          percentageBase: percentageBase,
+          minAmount: minAmount,
+          maxAmount: maxAmount,
+          priority: priority,
+          isRequired: isRequired,
+        );
+    final freshRules =
+        await ref.read(allocationRuleRepositoryProvider).getAllocationRules();
+    state = AsyncValue.data(freshRules);
   }
 
   Future<void> toggleActive(String ruleId, bool isActive) async {
