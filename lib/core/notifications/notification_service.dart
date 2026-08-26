@@ -12,20 +12,24 @@ class NotificationService {
 
   Future<void> init() async {
     if (kIsWeb) return;
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+    try {
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
 
-    await _notificationsPlugin.initialize(initSettings);
+      await _notificationsPlugin.initialize(initSettings);
+    } catch (e, stackTrace) {
+      debugPrint('NotificationService init error: $e\n$stackTrace');
+    }
   }
 
   /// Schedule daily reminder to record expenses

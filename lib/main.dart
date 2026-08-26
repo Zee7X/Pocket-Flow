@@ -14,21 +14,33 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Supabase
-  await Supabase.initialize(
-    url: SupabaseConstants.url,
-    publishableKey: SupabaseConstants.publishableKey,
-  );
+  try {
+    await Supabase.initialize(
+      url: SupabaseConstants.url,
+      publishableKey: SupabaseConstants.publishableKey,
+    );
+  } catch (e, stackTrace) {
+    debugPrint('Supabase initialization error: $e\n$stackTrace');
+  }
 
   if (!kIsWeb) {
-    // Initialize timezone data for local notifications
-    tz.initializeTimeZones();
-    await NotificationService().init();
+    try {
+      // Initialize timezone data for local notifications
+      tz.initializeTimeZones();
+      await NotificationService().init();
+    } catch (e, stackTrace) {
+      debugPrint('Notification timezone init error: $e\n$stackTrace');
+    }
 
-    // Force portrait orientation on mobile devices
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    try {
+      // Force portrait orientation on mobile devices
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    } catch (e) {
+      debugPrint('Orientation configuration error: $e');
+    }
   }
 
   // Set system UI overlay style for seamless edge-to-edge status bar

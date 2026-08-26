@@ -116,7 +116,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
       children: [
         // PocketFlow Official Logo
         Image.asset(
-          'assets/images/logo.png',
+          'assets/images/new_logo.png',
           height: 42,
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
