@@ -7,6 +7,7 @@ import '../core/widgets/app_shell.dart';
 import '../features/auth/domain/auth_state.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/register_page.dart';
+import '../features/auth/presentation/splash_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/categories_rules/presentation/categories_rules_page.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
@@ -17,6 +18,7 @@ import '../features/transactions/presentation/transactions_page.dart';
 
 // Route name constants
 class AppRoutes {
+  static const splash = '/splash';
   static const login = '/login';
   static const register = '/register';
   static const dashboard = '/';
@@ -29,14 +31,18 @@ class AppRoutes {
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: AppRoutes.dashboard,
+    initialLocation: AppRoutes.splash,
     refreshListenable: _AuthStateListenable(ref),
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isAuthenticated = authState is AuthAuthenticated;
+      final isSplash = state.matchedLocation == AppRoutes.splash;
       final isLoggingIn = state.matchedLocation == AppRoutes.login ||
           state.matchedLocation == AppRoutes.register;
 
+      if (isSplash) {
+        return null;
+      }
       if (!isAuthenticated && !isLoggingIn) {
         return AppRoutes.login;
       }
@@ -46,6 +52,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // ── Splash Route ───────────────────────────────────────────────────────
+      GoRoute(
+        path: AppRoutes.splash,
+        name: 'splash',
+        builder: (context, state) => const SplashPage(),
+      ),
+
       // ── Auth Routes ────────────────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.login,

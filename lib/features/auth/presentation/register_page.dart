@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/widgets/responsive_center.dart';
+import '../../../core/widgets/pocket_flow_logo.dart';
 import '../domain/auth_state.dart';
 import 'providers/auth_provider.dart';
 import '../../../app/theme.dart';
@@ -138,39 +139,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // PocketFlow Official Logo
-        Image.asset(
-          'assets/images/new_logo.png',
-          height: 42,
-          fit: BoxFit.contain,
-          alignment: Alignment.centerLeft,
-          errorBuilder: (ctx, err, stack) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  color: AppTheme.primary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'PocketFlow',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
+        const PocketFlowLogo(size: 26),
         const SizedBox(height: 24),
         Text(
           'Mulai atur alokasi\nkeuanganmu ✨',
@@ -293,25 +262,38 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
   }
 
   Widget _buildRegisterButton(bool isLoading) {
-    return ElevatedButton(
-      onPressed: isLoading ? null : _submit,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primary,
-        disabledBackgroundColor: AppTheme.primary.withValues(alpha: 0.4),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primary,
+          disabledBackgroundColor: AppTheme.primary.withValues(alpha: 0.4),
+          elevation: 2,
+          shadowColor: AppTheme.primary.withValues(alpha: 0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          ),
         ),
-      ),
-      child: isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
+        child: isLoading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : Text(
+                'Buat Akun',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
-            )
-          : const Text('Buat Akun'),
+      ),
     );
   }
 
