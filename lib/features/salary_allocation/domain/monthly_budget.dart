@@ -40,7 +40,19 @@ class MonthlyBudget {
   /// Only variable expense categories should show daily spending limit.
   /// Fixed costs (rent, utilities) are excluded.
   bool get isDailyTrackable =>
-      (categoryType == 'expense') && !categoryIsFixed;
+      (categoryType == 'expense' || categoryType == null) && !categoryIsFixed && !isSavings && !isDebt;
+
+  bool get isSavings =>
+      categoryType == 'savings' ||
+      categoryType == 'saving' ||
+      (categoryName?.toLowerCase().contains('tabungan') == true) ||
+      (categoryName?.toLowerCase().contains('investasi') == true) ||
+      (categoryName?.toLowerCase().contains('darurat') == true);
+
+  bool get isDebt =>
+      categoryType == 'debt' ||
+      (categoryName?.toLowerCase().contains('utang') == true) ||
+      (categoryName?.toLowerCase().contains('cicilan') == true);
 
   factory MonthlyBudget.fromJson(Map<String, dynamic> json) {
     final cat = json['pf_categories'] as Map<String, dynamic>?;

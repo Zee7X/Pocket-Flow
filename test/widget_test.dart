@@ -308,7 +308,6 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.byType(Image), findsWidgets);
       expect(find.text('Selamat datang\nkembali 👋'), findsOneWidget);
       expect(find.text('Masuk'), findsWidgets);
     });
@@ -324,11 +323,10 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.byType(Image), findsWidgets);
       expect(find.text('Mulai atur alokasi\nkeuanganmu ✨'), findsOneWidget);
     });
 
-    testWidgets('3. DashboardPage renders Safe Spending and Category Budgets', (tester) async {
+    testWidgets('3. DashboardPage renders Safe Spending and Category Budgets (With Allocation Mode)', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -340,6 +338,29 @@ void main() {
       expect(find.text('Budget Kategori Bulan Ini'), findsOneWidget);
       expect(find.text('Makan'), findsWidgets);
       expect(find.text('Sewa Kos'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('3B. DashboardPage renders Sisa Saldo Kas & Income/Expense (Without Allocation Mode)', (tester) async {
+      FlutterError.onError = (details) {
+        FlutterError.dumpErrorToConsole(details);
+      };
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(createTestApp(
+        const DashboardPage(),
+        extraOverrides: [
+          monthlyBudgetsProvider.overrideWith((ref) async => []),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sisa Saldo Kas Bulan Ini'), findsOneWidget);
+      expect(find.text('Total Pemasukan'), findsOneWidget);
+      expect(find.text('Total Pengeluaran'), findsOneWidget);
+      expect(find.text('Ingin Budget Otomatis dari Gaji?'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

@@ -29,11 +29,12 @@ class _SplashPageState extends ConsumerState<SplashPage>
     super.initState();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 800),
     );
 
-    _scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack),
+    // Subtle smooth scale without disappearing
+    _scaleAnim = Tween<double>(begin: 0.94, end: 1.0).animate(
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic),
     );
 
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -43,7 +44,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
     _animCtrl.forward();
 
     // Navigate to destination after animation and auth check
-    Timer(const Duration(milliseconds: 1800), _navigateToNextScreen);
+    Timer(const Duration(milliseconds: 1400), _navigateToNextScreen);
   }
 
   void _navigateToNextScreen() {
@@ -74,12 +75,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
               child: AnimatedBuilder(
                 animation: _animCtrl,
                 builder: (context, child) {
-                  return Opacity(
-                    opacity: _fadeAnim.value,
-                    child: Transform.scale(
-                      scale: _scaleAnim.value,
-                      child: child,
-                    ),
+                  return Transform.scale(
+                    scale: _scaleAnim.value,
+                    child: child,
                   );
                 },
                 child: Column(
@@ -87,13 +85,16 @@ class _SplashPageState extends ConsumerState<SplashPage>
                   children: [
                     const PocketFlowLogo(size: 34),
                     const SizedBox(height: 14),
-                    Text(
-                      'Smart Salary & Finance Allocation',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.textDarkSecondary,
-                        letterSpacing: 0.2,
+                    FadeTransition(
+                      opacity: _fadeAnim,
+                      child: Text(
+                        'Smart Salary & Finance Allocation',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textDarkSecondary,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                   ],

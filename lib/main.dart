@@ -9,9 +9,27 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'app/app.dart';
 import 'core/constants/supabase_constants.dart';
 import 'core/notifications/notification_service.dart';
+import 'core/widgets/error_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Override global ErrorWidget to prevent red screen of death
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      color: const Color(0xFFF4F6FA),
+      child: SafeArea(
+        child: AppErrorWidget(
+          error: details.exception,
+          onRetry: () async {
+            try {
+              await Supabase.instance.client.auth.refreshSession();
+            } catch (_) {}
+          },
+        ),
+      ),
+    );
+  };
 
   // Initialize Supabase
   try {

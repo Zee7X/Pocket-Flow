@@ -37,6 +37,8 @@ class AppTheme {
   static const Color pastelGreen = Color(0xFFECFDF5);
   static const Color pastelRed = Color(0xFFFEF2F2);
   static const Color pastelYellow = Color(0xFFFFFBEB);
+  static const Color pastelAmber = Color(0xFFFFFBEB);
+  static const Color pastelOrange = Color(0xFFFFF7ED);
   static const Color pastelPurple = Color(0xFFF5F3FF);
   static const Color pastelCyan = Color(0xFFECFEFF);
 
@@ -141,6 +143,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      canvasColor: canvasLight,
       scaffoldBackgroundColor: canvasLight,
       colorScheme: const ColorScheme.light(
         primary: primary,
@@ -157,6 +160,7 @@ class AppTheme {
       // AppBar Theme
       appBarTheme: AppBarTheme(
         backgroundColor: canvasLight,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
@@ -271,6 +275,8 @@ class AppTheme {
       // Dialog Theme
       dialogTheme: DialogThemeData(
         backgroundColor: surfaceLight,
+        surfaceTintColor: Colors.transparent,
+        barrierColor: const Color(0x73000000),
         elevation: 10,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusXL),
@@ -278,9 +284,35 @@ class AppTheme {
         ),
       ),
 
+      // Dropdown Menu Theme
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          backgroundColor: const WidgetStatePropertyAll(surfaceLight),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          elevation: const WidgetStatePropertyAll(8),
+          shadowColor: const WidgetStatePropertyAll(Color(0x140F172A)),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radiusLarge),
+              side: const BorderSide(color: borderLight),
+            ),
+          ),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          ),
+        ),
+        textStyle: GoogleFonts.dmSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: textDarkPrimary,
+        ),
+      ),
+
       // BottomSheet Theme
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: surfaceLight,
+        surfaceTintColor: Colors.transparent,
+        modalBarrierColor: Color(0x73000000),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXL)),
         ),

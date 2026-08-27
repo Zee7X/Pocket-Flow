@@ -7,6 +7,7 @@ import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/responsive_center.dart';
 import '../domain/allocation_rule.dart';
 import '../domain/category.dart';
@@ -137,7 +138,12 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
   ) {
     return rulesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => AppErrorWidget(
+        error: e,
+        onRetry: () async {
+          ref.invalidate(allocationRulesProvider);
+        },
+      ),
       data: (rules) {
         if (rules.isEmpty) {
           return EmptyStateWidget(
@@ -314,7 +320,12 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
   Widget _buildCategoriesTab(AsyncValue<List<Category>> categoriesAsync) {
     return categoriesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => AppErrorWidget(
+        error: e,
+        onRetry: () async {
+          ref.invalidate(categoriesProvider);
+        },
+      ),
       data: (categories) {
         if (categories.isEmpty) {
           return EmptyStateWidget(

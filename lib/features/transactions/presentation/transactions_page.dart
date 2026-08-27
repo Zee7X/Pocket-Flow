@@ -7,8 +7,11 @@ import 'package:intl/intl.dart';
 import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
+import '../../../core/widgets/app_dropdown_field.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/responsive_center.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../salary_allocation/presentation/providers/salary_allocation_provider.dart';
 import '../domain/transaction.dart';
 import 'providers/transactions_provider.dart';
@@ -94,7 +97,12 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                 child: transactionsAsync.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) => AppErrorWidget(
+                    error: e,
+                    onRetry: () async {
+                      ref.invalidate(transactionsProvider);
+                    },
+                  ),
                   data: (transactions) {
                     final filtered = transactions.where((t) {
                       if (_filter == 'expense') {
@@ -123,6 +131,31 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                       itemBuilder: (ctx, i) {
                         final tx = filtered[i];
                         final isExpense = tx.type == TransactionType.expense;
+                        final isSavings = tx.isSavings;
+                        final isDebt = tx.isDebt;
+
+                        final Color iconColor = isSavings
+                            ? AppTheme.primary
+                            : (isDebt
+                                ? AppTheme.warning
+                                : (isExpense ? AppTheme.danger : AppTheme.success));
+                        final Color iconBg = isSavings
+                            ? AppTheme.pastelBlue
+                            : (isDebt
+                                ? AppTheme.pastelAmber
+                                : (isExpense ? AppTheme.pastelRed : AppTheme.pastelGreen));
+                        final IconData icon = isSavings
+                            ? Icons.savings_outlined
+                            : (isDebt
+                                ? Icons.credit_card_outlined
+                                : (isExpense
+                                    ? Icons.arrow_outward_rounded
+                                    : Icons.arrow_downward_rounded));
+
+                        final String prefix = isSavings ? '📥 ' : (isExpense ? '-' : '+');
+                        final Color amountColor = isSavings
+                            ? AppTheme.primary
+                            : (isExpense ? AppTheme.danger : AppTheme.success);
 
                         return CloudPulseCard(
                           padding: const EdgeInsets.all(14),
@@ -132,19 +165,13 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: isExpense
-                                      ? AppTheme.pastelRed
-                                      : AppTheme.pastelGreen,
+                                  color: iconBg,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  isExpense
-                                      ? Icons.arrow_outward_rounded
-                                      : Icons.arrow_downward_rounded,
+                                  icon,
                                   size: 18,
-                                  color: isExpense
-                                      ? AppTheme.danger
-                                      : AppTheme.success,
+                                  color: iconColor,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -157,9 +184,11 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                               tx.description!.isNotEmpty
                                           ? tx.description!
                                           : (tx.categoryName ??
-                                              (isExpense
-                                                  ? 'Pengeluaran'
-                                                  : 'Pemasukan')),
+                                              (isSavings
+                                                  ? 'Tabungan / Simpanan'
+                                                  : (isExpense
+                                                      ? 'Pengeluaran'
+                                                      : 'Pemasukan'))),
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
@@ -168,10 +197,12 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${tx.categoryName != null ? "${tx.categoryName!} • " : ""}${DateFormat('dd MMM yyyy').format(tx.transactionDate)}',
+                                      '${tx.categoryName != null ? "${tx.categoryName!} • " : ""}${DateFormat('dd MMM yyyy').format(tx.transactionDate)}${isSavings ? " • Disimpan" : ""}',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 11,
-                                        color: AppTheme.textDarkMuted,
+                                        color: isSavings
+                                            ? AppTheme.primary
+                                            : AppTheme.textDarkMuted,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -179,31 +210,47 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                   ],
                                 ),
                               ),
-                              Flexible(
-                                child: Text(
-                                  '${isExpense ? '-' : '+'}${tx.amount.toRupiah}',
-                                  style: AppTheme.monoCurrency(
-                                    color: isExpense
-                                        ? AppTheme.danger
-                                        : AppTheme.success,
-                                    fontSize: 14,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.right,
+                              const SizedBox(width: 8),
+                              Text(
+                                '$prefix${tx.amount.toRupiah}',
+                                style: AppTheme.monoCurrency(
+                                  color: amountColor,
+                                  fontSize: 13.5,
+                                  fontWeight: isSavings ? FontWeight.w700 : FontWeight.w600,
                                 ),
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined,
-                                    size: 16, color: AppTheme.textDarkMuted),
-                                tooltip: 'Edit Transaksi',
-                                onPressed: () =>
-                                    _openEditTransaction(context, tx),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded,
-                                    size: 16, color: AppTheme.textDarkMuted),
-                                tooltip: 'Hapus Transaksi',
-                                onPressed: () => _deleteTransaction(tx),
+                              const SizedBox(width: 8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(6),
+                                    onTap: () => _openEditTransaction(context, tx),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(5),
+                                      child: Icon(
+                                        Icons.edit_outlined,
+                                        size: 16,
+                                        color: AppTheme.textDarkMuted,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(6),
+                                    onTap: () => _confirmDelete(tx),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(5),
+                                      child: Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 16,
+                                        color: AppTheme.textDarkMuted,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -220,6 +267,45 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
     );
   }
 
+  Future<void> _confirmDelete(TransactionModel tx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceLight,
+        title: Text(
+          'Hapus Transaksi',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Apakah kamu yakin ingin menghapus transaksi "${tx.description != null && tx.description!.isNotEmpty ? tx.description : (tx.categoryName ?? 'ini')}" sebesar ${tx.amount.toRupiah}?',
+          style: GoogleFonts.dmSans(color: AppTheme.textDarkSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.dmSans(color: AppTheme.textDarkMuted),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteTransaction(tx);
+    }
+  }
+
   Future<void> _deleteTransaction(TransactionModel tx) async {
     try {
       await ref.read(transactionsProvider.notifier).deleteTransaction(tx.id);
@@ -230,7 +316,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
       if (mounted) {
         AppTheme.showErrorSnackBar(
           context,
-          e.toString().replaceAll('Exception: ', ''),
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal menghapus transaksi.'),
         );
       }
     }
@@ -291,15 +377,16 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
           children: [
             Expanded(
               flex: 3,
-              child: DropdownButtonFormField<int>(
-                isExpanded: true,
-                initialValue: month,
+              child: AppDropdownFormField<int>(
+                value: month,
+                labelText: 'Bulan',
+                prefixIcon: const Icon(Icons.calendar_month_outlined, size: 20, color: AppTheme.primary),
                 items: List.generate(12, (i) => i + 1).map((m) {
                   return DropdownMenuItem(
                     value: m,
                     child: Text(
                       monthNames[m - 1],
-                      style: GoogleFonts.dmSans(),
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
                       overflow: TextOverflow.ellipsis,
                     ),
                   );
@@ -310,16 +397,18 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
             const SizedBox(width: 12),
             Expanded(
               flex: 2,
-              child: DropdownButtonFormField<int>(
-                isExpanded: true,
-                initialValue: year,
-                items: [2024, 2025, 2026, 2027].map((y) {
+              child: AppDropdownFormField<int>(
+                value: year,
+                labelText: 'Tahun',
+                items: [2024, 2025, 2026, 2027, 2028].map((y) {
                   return DropdownMenuItem(
                     value: y,
                     child: Text(
                       '$y',
-                      style: GoogleFonts.dmSans(),
-                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                   );
                 }).toList(),

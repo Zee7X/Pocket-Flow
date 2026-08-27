@@ -72,27 +72,32 @@ class AllocationPreviewSheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hasil Preview Alokasi',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textDarkPrimary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hasil Preview Alokasi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textDarkPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Periode: Bulan ${result.periodMonth}/${result.periodYear}',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: AppTheme.textDarkSecondary,
+                    const SizedBox(height: 2),
+                    Text(
+                      'Periode: Bulan ${result.periodMonth}/${result.periodYear}',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppTheme.textDarkSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -102,8 +107,9 @@ class AllocationPreviewSheet extends StatelessWidget {
                 child: Text(
                   result.salaryAmount.toRupiah,
                   style: AppTheme.monoCurrency(
+                    fontSize: 14,
                     color: AppTheme.primary,
-                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

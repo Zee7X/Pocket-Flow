@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../../core/widgets/app_dropdown_field.dart';
+import '../../../../core/utils/error_helper.dart';
 import '../../../salary_allocation/presentation/providers/salary_allocation_provider.dart';
 import '../../domain/allocation_rule.dart';
 import '../../domain/category.dart';
@@ -115,17 +117,21 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Category dropdown
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _selectedCategoryId,
-                decoration: const InputDecoration(labelText: 'Kategori'),
+              AppDropdownFormField<String>(
+                value: _selectedCategoryId,
+                labelText: 'Kategori',
+                hintText: 'Pilih Kategori',
+                prefixIcon: const Icon(Icons.category_outlined, size: 20, color: AppTheme.primary),
                 items: widget.categories.map((c) {
                   return DropdownMenuItem(
                     value: c.id,
-                    child: Text(
-                      c.name,
-                      style: GoogleFonts.dmSans(),
-                      overflow: TextOverflow.ellipsis,
+                    child: AppDropdownItemContent(
+                      icon: c.isFixed ? Icons.push_pin_rounded : Icons.folder_outlined,
+                      iconColor: c.isFixed ? AppTheme.warning : AppTheme.primary,
+                      iconBgColor: c.isFixed ? AppTheme.pastelYellow : AppTheme.pastelBlue,
+                      title: c.name,
+                      badgeText: c.isFixed ? 'Tetap' : 'Variabel',
+                      badgeColor: c.isFixed ? AppTheme.warning : AppTheme.primary,
                     ),
                   );
                 }).toList(),
@@ -153,26 +159,50 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
               const SizedBox(height: 14),
 
               // Allocation Type
-              DropdownButtonFormField<AllocationType>(
-                isExpanded: true,
-                initialValue: _selectedType,
-                decoration: const InputDecoration(labelText: 'Tipe Alokasi'),
+              AppDropdownFormField<AllocationType>(
+                value: _selectedType,
+                labelText: 'Tipe Alokasi',
+                prefixIcon: const Icon(Icons.tune_rounded, size: 20, color: AppTheme.primary),
                 items: const [
                   DropdownMenuItem(
                     value: AllocationType.fixed,
-                    child: Text('Nominal Tetap (Fixed)', overflow: TextOverflow.ellipsis),
+                    child: AppDropdownItemContent(
+                      icon: Icons.push_pin_rounded,
+                      iconColor: AppTheme.warning,
+                      iconBgColor: AppTheme.pastelYellow,
+                      title: 'Nominal Tetap (Fixed)',
+                      subtitle: 'Jumlah pasti tiap periode gajian',
+                    ),
                   ),
                   DropdownMenuItem(
                     value: AllocationType.capped,
-                    child: Text('Batas Maksimal (Capped)', overflow: TextOverflow.ellipsis),
+                    child: AppDropdownItemContent(
+                      icon: Icons.vertical_align_top_rounded,
+                      iconColor: AppTheme.info,
+                      iconBgColor: AppTheme.pastelBlue,
+                      title: 'Batas Maksimal (Capped)',
+                      subtitle: 'Maksimal alokasi hingga batas tertentu',
+                    ),
                   ),
                   DropdownMenuItem(
                     value: AllocationType.percentage,
-                    child: Text('Persentase (%)', overflow: TextOverflow.ellipsis),
+                    child: AppDropdownItemContent(
+                      icon: Icons.percent_rounded,
+                      iconColor: AppTheme.primary,
+                      iconBgColor: AppTheme.pastelBlue,
+                      title: 'Persentase (%)',
+                      subtitle: 'Dihitung dari persentase pemasukan',
+                    ),
                   ),
                   DropdownMenuItem(
                     value: AllocationType.remaining,
-                    child: Text('Sisa Penghasilan (Remaining)', overflow: TextOverflow.ellipsis),
+                    child: AppDropdownItemContent(
+                      icon: Icons.savings_outlined,
+                      iconColor: AppTheme.success,
+                      iconBgColor: AppTheme.pastelGreen,
+                      title: 'Sisa Penghasilan (Remaining)',
+                      subtitle: 'Menampung sisa uang yang belum teralokasi',
+                    ),
                   ),
                 ],
                 onChanged: (val) => setState(() => _selectedType = val!),
@@ -226,18 +256,30 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
                   },
                 ),
                 const SizedBox(height: 14),
-                DropdownButtonFormField<PercentageBase>(
-                  isExpanded: true,
-                  initialValue: _selectedBase,
-                  decoration: const InputDecoration(labelText: 'Dihitung Dari'),
+                AppDropdownFormField<PercentageBase>(
+                  value: _selectedBase,
+                  labelText: 'Dihitung Dari',
+                  prefixIcon: const Icon(Icons.calculate_outlined, size: 20, color: AppTheme.primary),
                   items: const [
                     DropdownMenuItem(
                       value: PercentageBase.remaining,
-                      child: Text('Sisa Penghasilan', overflow: TextOverflow.ellipsis),
+                      child: AppDropdownItemContent(
+                        icon: Icons.savings_outlined,
+                        iconColor: AppTheme.success,
+                        iconBgColor: AppTheme.pastelGreen,
+                        title: 'Sisa Penghasilan',
+                        subtitle: 'Dihitung dari sisa setelah pos wajib',
+                      ),
                     ),
                     DropdownMenuItem(
                       value: PercentageBase.totalIncome,
-                      child: Text('Total Gaji Masuk', overflow: TextOverflow.ellipsis),
+                      child: AppDropdownItemContent(
+                        icon: Icons.account_balance_wallet_outlined,
+                        iconColor: AppTheme.primary,
+                        iconBgColor: AppTheme.pastelBlue,
+                        title: 'Total Gaji Masuk',
+                        subtitle: 'Dihitung dari total gaji bruto',
+                      ),
                     ),
                   ],
                   onChanged: (val) => setState(() => _selectedBase = val!),
@@ -419,7 +461,7 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
       if (mounted) {
         AppTheme.showErrorSnackBar(
           context,
-          e.toString().replaceAll('Exception: ', ''),
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal menyimpan aturan. Silakan coba lagi.'),
         );
       }
     }

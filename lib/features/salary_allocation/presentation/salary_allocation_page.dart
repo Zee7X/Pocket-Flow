@@ -4,17 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
 import '../../../core/formatters/currency_input_formatter.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
+import '../../../core/widgets/app_dropdown_field.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/responsive_center.dart';
+import '../../../core/utils/error_helper.dart';
+import '../../categories_rules/presentation/providers/categories_rules_provider.dart';
 import '../domain/salary_entry.dart';
 import 'providers/salary_allocation_provider.dart';
 import 'widgets/allocation_preview_sheet.dart';
+import 'widgets/salary_history_detail_sheet.dart';
 
 class SalaryAllocationPage extends ConsumerStatefulWidget {
   const SalaryAllocationPage({super.key});
@@ -49,6 +55,8 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(salaryHistoryProvider);
     final actionState = ref.watch(salaryAllocationActionProvider);
+    final rulesAsync = ref.watch(allocationRulesProvider);
+    final rulesCount = rulesAsync.value?.length ?? 0;
     final isLoading = actionState.isLoading;
 
     return Scaffold(
@@ -107,8 +115,13 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                             color: AppTheme.pastelBlue,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.auto_awesome_rounded,
-                              size: 16, color: AppTheme.primary),
+                          child: Icon(
+                            rulesCount > 0
+                                ? Icons.tune_rounded
+                                : Icons.auto_awesome_rounded,
+                            size: 16,
+                            color: AppTheme.primary,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -116,7 +129,9 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Ingin Budget Terbagi Otomatis?',
+                                rulesCount > 0
+                                    ? 'Aturan Alokasi Aktif ($rulesCount Aturan)'
+                                    : 'Ingin Budget Terbagi Otomatis?',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -124,7 +139,9 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                                 ),
                               ),
                               Text(
-                                'Gunakan Template Onboarding atau atur target per kategori.',
+                                rulesCount > 0
+                                    ? 'Ketuk untuk menyesuaikan persentase atau menambah pos kategori.'
+                                    : 'Gunakan Template Onboarding atau atur target per kategori.',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 12,
                                   color: AppTheme.textDarkSecondary,
@@ -245,10 +262,10 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    initialValue: _selectedMonth,
-                    decoration: const InputDecoration(labelText: 'Bulan'),
+                  child: AppDropdownFormField<int>(
+                    value: _selectedMonth,
+                    labelText: 'Bulan',
+                    prefixIcon: const Icon(Icons.calendar_month_outlined, size: 20, color: AppTheme.primary),
                     items: List.generate(12, (i) => i + 1).map((m) {
                       const months = [
                         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -258,7 +275,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                         value: m,
                         child: Text(
                           months[m - 1],
-                          style: GoogleFonts.dmSans(),
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
                           overflow: TextOverflow.ellipsis,
                         ),
                       );
@@ -269,17 +286,18 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                 const SizedBox(width: 10),
                 Expanded(
                   flex: 2,
-                  child: DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    initialValue: _selectedYear,
-                    decoration: const InputDecoration(labelText: 'Tahun'),
-                    items: [2024, 2025, 2026, 2027].map((y) {
+                  child: AppDropdownFormField<int>(
+                    value: _selectedYear,
+                    labelText: 'Tahun',
+                    items: [2024, 2025, 2026, 2027, 2028].map((y) {
                       return DropdownMenuItem(
                         value: y,
                         child: Text(
                           '$y',
-                          style: GoogleFonts.dmSans(),
-                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
                         ),
                       );
                     }).toList(),
@@ -360,7 +378,13 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
   Widget _buildHistoryList(AsyncValue<List<SalaryEntry>> historyAsync) {
     return historyAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => AppErrorWidget(
+        error: e,
+        compact: true,
+        onRetry: () async {
+          ref.invalidate(salaryHistoryProvider);
+        },
+      ),
       data: (history) {
         if (history.isEmpty) {
           return const EmptyStateWidget(
@@ -381,60 +405,102 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
             final periodStr = DateFormat('MMMM yyyy')
                 .format(DateTime(entry.periodYear, entry.periodMonth));
 
-            return CloudPulseCard(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppTheme.pastelBlue,
-                      shape: BoxShape.circle,
+            return InkWell(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              onTap: () {
+                SalaryHistoryDetailSheet.show(
+                  context,
+                  entry: entry,
+                  onEditForm: () {
+                    setState(() {
+                      _salaryCtrl.text = CurrencyInputFormatter.format(entry.amount);
+                      _selectedMonth = entry.periodMonth;
+                      _selectedYear = entry.periodYear;
+                      _selectedDate = entry.salaryDate;
+                    });
+                    AppTheme.showSuccessSnackBar(
+                      context,
+                      'Form disesuaikan dengan periode $periodStr',
+                    );
+                  },
+                );
+              },
+              child: CloudPulseCard(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: AppTheme.pastelBlue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppTheme.primary,
+                        size: 20,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppTheme.primary,
-                      size: 20,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            periodStr,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: AppTheme.textDarkPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Diterima: ${DateFormat('dd MMM yyyy').format(entry.salaryDate)}',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppTheme.textDarkMuted,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          periodStr,
-                          style: GoogleFonts.plusJakartaSans(
+                          entry.amount.toRupiah,
+                          style: AppTheme.monoCurrency(
+                            color: AppTheme.primary,
+                            fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppTheme.textDarkPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          'Diterima: ${DateFormat('dd MMM yyyy').format(entry.salaryDate)}',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: AppTheme.textDarkMuted,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Lihat Rincian',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 10,
+                              color: AppTheme.primary,
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      entry.amount.toRupiah,
-                      style: AppTheme.monoCurrency(
-                        color: AppTheme.primary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -463,12 +529,14 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
         isScrollControlled: true,
         useRootNavigator: true,
         useSafeArea: false,
+        barrierColor: const Color(0x73000000),
         backgroundColor: Colors.transparent,
-        builder: (_) => AllocationPreviewSheet(
+        builder: (bottomSheetContext) => AllocationPreviewSheet(
           result: result,
           onConfirm: () async {
-            Navigator.pop(context);
-            await ref
+            Navigator.pop(bottomSheetContext);
+
+            final res = await ref
                 .read(salaryAllocationActionProvider.notifier)
                 .execute(
                   salaryAmount: totalSalary,
@@ -476,15 +544,66 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                   periodMonth: _selectedMonth,
                   periodYear: _selectedYear,
                 );
-            if (mounted) {
+
+            if (!mounted) return;
+
+            if (res != null) {
+              // Update selected period to newly allocated period
+              ref.read(selectedPeriodProvider.notifier).state =
+                  (month: _selectedMonth, year: _selectedYear);
+
               AppTheme.showSuccessSnackBar(
                 context,
                 'Alokasi gaji berhasil dikunci & diterapkan!',
               );
+            } else {
+              final actionState = ref.read(salaryAllocationActionProvider);
+              final rawErr = actionState.error?.toString().toLowerCase() ?? '';
+              if (rawErr.contains('pgrst303') || rawErr.contains('jwt')) {
+                try {
+                  await Supabase.instance.client.auth.refreshSession();
+                } catch (_) {}
+                if (!mounted) return;
+                AppTheme.showErrorSnackBar(
+                  context,
+                  'Sesi autentikasi belum sinkron. Sesi telah diperbarui, silakan coba tekan tombol sekali lagi.',
+                );
+              } else {
+                if (!mounted) return;
+                AppTheme.showErrorSnackBar(
+                  context,
+                  ErrorHelper.getHumanReadableMessage(
+                    actionState.error,
+                    fallback: 'Gagal menerapkan alokasi gaji. Silakan periksa kembali data Anda.',
+                  ),
+                );
+              }
             }
           },
         ),
       );
+    } else if (mounted) {
+      final actionState = ref.read(salaryAllocationActionProvider);
+      final rawErr = actionState.error?.toString().toLowerCase() ?? '';
+      if (rawErr.contains('pgrst303') || rawErr.contains('jwt')) {
+        try {
+          await Supabase.instance.client.auth.refreshSession();
+        } catch (_) {}
+        if (!mounted) return;
+        AppTheme.showErrorSnackBar(
+          context,
+          'Sesi / jam perangkat belum sinkron. Sesi telah diperbarui, silakan tekan tombol sekali lagi.',
+        );
+      } else {
+        if (!mounted) return;
+        AppTheme.showErrorSnackBar(
+          context,
+          ErrorHelper.getHumanReadableMessage(
+            actionState.error,
+            fallback: 'Gagal melakukan preview alokasi.',
+          ),
+        );
+      }
     }
   }
 }

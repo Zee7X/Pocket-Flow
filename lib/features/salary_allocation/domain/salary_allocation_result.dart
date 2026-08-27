@@ -15,12 +15,18 @@ class RuleAllocationItem {
   });
 
   factory RuleAllocationItem.fromJson(Map<String, dynamic> json) {
+    final ruleName = (json['rule_name'] ?? json['category_name']) as String? ?? 'Alokasi';
+    final categoryId = (json['category_id'] ?? json['rule_id']) as String? ?? '';
+    final ruleId = (json['rule_id'] ?? json['category_id']) as String? ?? categoryId;
+    final allocType = json['allocation_type'] as String? ?? 'fixed';
+    final allocAmount = (json['allocated_amount'] as num?)?.toInt() ?? 0;
+
     return RuleAllocationItem(
-      ruleId: json['rule_id'] as String,
-      ruleName: json['rule_name'] as String,
-      categoryId: json['category_id'] as String,
-      allocationType: json['allocation_type'] as String,
-      allocatedAmount: (json['allocated_amount'] as num).toInt(),
+      ruleId: ruleId,
+      ruleName: ruleName,
+      categoryId: categoryId,
+      allocationType: allocType,
+      allocatedAmount: allocAmount,
     );
   }
 }
@@ -42,7 +48,7 @@ class AllocationWarning {
     return AllocationWarning(
       code: json['code'] as String? ?? 'WARNING',
       message: json['message'] as String? ?? '',
-      ruleName: json['rule_name'] as String?,
+      ruleName: (json['rule_name'] ?? json['category_name']) as String?,
       shortfall: (json['shortfall'] as num?)?.toInt(),
     );
   }
@@ -76,25 +82,35 @@ class SalaryAllocationResult {
   });
 
   factory SalaryAllocationResult.fromJson(Map<String, dynamic> json) {
-    final allocList = (json['allocations'] as List<dynamic>?)
-            ?.map((e) => RuleAllocationItem.fromJson(e as Map<String, dynamic>))
-            .toList() ??
-        [];
-    final warnList = (json['warnings'] as List<dynamic>?)
-            ?.map((e) => AllocationWarning.fromJson(e as Map<String, dynamic>))
-            .toList() ??
-        [];
+    final rawAllocations = json['allocations'];
+    final allocList = (rawAllocations is List)
+        ? rawAllocations
+            .map((e) => RuleAllocationItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList()
+        : <RuleAllocationItem>[];
+
+    final rawWarnings = json['warnings'];
+    final warnList = (rawWarnings is List)
+        ? rawWarnings
+            .map((e) => AllocationWarning.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList()
+        : <AllocationWarning>[];
+
+    final totalAllocated = (json['total_allocated'] as num?)?.toInt() ?? 0;
+    final rawRemaining = json['remaining'] ?? json['remaining_income'];
+    final remaining = (rawRemaining as num?)?.toInt() ?? 0;
+    final salaryAmount = (json['salary_amount'] as num?)?.toInt() ?? 0;
 
     return SalaryAllocationResult(
-      success: json['success'] as bool? ?? false,
+      success: json['success'] as bool? ?? true,
       isPreview: json['is_preview'] as bool? ?? false,
       salaryEntryId: json['salary_entry_id'] as String?,
-      salaryAmount: (json['salary_amount'] as num).toInt(),
-      totalAllocated: (json['total_allocated'] as num).toInt(),
-      remaining: (json['remaining'] as num).toInt(),
+      salaryAmount: salaryAmount,
+      totalAllocated: totalAllocated,
+      remaining: remaining,
       extraIncome: (json['extra_income'] as num?)?.toInt() ?? 0,
-      periodMonth: (json['period_month'] as num).toInt(),
-      periodYear: (json['period_year'] as num).toInt(),
+      periodMonth: (json['period_month'] as num?)?.toInt() ?? 1,
+      periodYear: (json['period_year'] as num?)?.toInt() ?? DateTime.now().year,
       allocations: allocList,
       warnings: warnList,
     );

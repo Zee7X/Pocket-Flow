@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/extensions/currency_extension.dart';
 import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../../core/utils/error_helper.dart';
 import '../../../categories_rules/domain/category.dart';
 import '../../../categories_rules/presentation/providers/categories_rules_provider.dart';
 import '../../../transactions/domain/transaction.dart';
@@ -202,7 +203,7 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
       if (mounted) {
         AppTheme.showErrorSnackBar(
           context,
-          e.toString().replaceAll('Exception: ', ''),
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal mencatat pembayaran cicilan. Silakan coba lagi.'),
         );
       }
     }

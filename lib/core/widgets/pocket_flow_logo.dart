@@ -58,34 +58,42 @@ class PocketFlowLogo extends StatelessWidget {
         ],
 
         // ── Brand Text Combination ──────────────────────────────
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // "Pocket" in Solid Royal Blue
-            Text(
-              'Pocket',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: size,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.primary,
-                letterSpacing: -0.6,
-                height: 1.1,
+        Flexible(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // "Pocket" in Solid Royal Blue
+              Flexible(
+                child: Text(
+                  'Pocket',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: size,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                    letterSpacing: -0.6,
+                    height: 1.1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
 
-            // "Flow" in Elegant Deep Slate Charcoal
-            Text(
-              'Flow',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: size,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textDarkPrimary,
-                letterSpacing: -0.6,
-                height: 1.1,
+              // "Flow" in Elegant Deep Slate Charcoal
+              Flexible(
+                child: Text(
+                  'Flow',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: size,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textDarkPrimary,
+                    letterSpacing: -0.6,
+                    height: 1.1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );

@@ -20,7 +20,7 @@ class ReportRepository {
     final nextYear = month == 12 ? year + 1 : year;
     final endStr = '$nextYear-${nextMonth.toString().padLeft(2, '0')}-01';
 
-    // 1. Fetch Salary Entries
+    // 1. Fetch Salary Entries (as reference / fallback)
     final salaryRes = await _client
         .from('pf_salary_entries')
         .select('amount')
@@ -41,7 +41,9 @@ class ReportRepository {
         .lt('transaction_date', endStr);
 
     int totalExpense = 0;
-    int extraIncome = 0;
+    int totalIncome = 0;
+    int transactionSavings = 0;
+    int transactionDebt = 0;
     final Map<String, int> spentPerCategory = {};
 
     for (final t in (txRes as List)) {
@@ -49,16 +51,27 @@ class ReportRepository {
       final amount = (t['amount'] as num).toInt();
       final cat = t['pf_categories'] as Map<String, dynamic>?;
       final catName = cat != null ? (cat['name'] as String? ?? 'Lainnya') : 'Lainnya';
+      final catType = (cat != null ? (cat['type'] as String? ?? 'expense') : 'expense').toLowerCase();
 
       if (type == 'expense') {
-        totalExpense += amount;
         spentPerCategory[catName] = (spentPerCategory[catName] ?? 0) + amount;
+
+        if (catType == 'savings' || catType == 'saving' || catName.toLowerCase().contains('tabungan')) {
+          transactionSavings += amount;
+        } else if (catType == 'debt' || catName.toLowerCase().contains('utang') || catName.toLowerCase().contains('cicilan')) {
+          transactionDebt += amount;
+        } else {
+          totalExpense += amount;
+        }
       } else if (type == 'income') {
-        extraIncome += amount;
+        totalIncome += amount;
       }
     }
 
-    final totalIncome = totalSalary + extraIncome;
+    // Fallback if no income transactions exist but salary entry exists
+    if (totalIncome == 0 && totalSalary > 0) {
+      totalIncome = totalSalary;
+    }
 
     // 3. Fetch Monthly Budgets
     final budgetRes = await _client
@@ -70,36 +83,38 @@ class ReportRepository {
     final budgets =
         (budgetRes as List).map((json) => MonthlyBudget.fromJson(json)).toList();
 
-    // 4. Fetch Debt Payments
+    // 4. Fetch Debt Payments from pf_debt_payments
     final debtPaymentRes = await _client
         .from('pf_debt_payments')
         .select('amount')
         .eq('user_id', _userId)
         .gte('payment_date', startStr)
         .lt('payment_date', endStr);
-    int totalDebtPayment = 0;
+    int goalDebtPayment = 0;
     for (final d in (debtPaymentRes as List)) {
-      totalDebtPayment += (d['amount'] as num).toInt();
+      goalDebtPayment += (d['amount'] as num).toInt();
     }
+    final totalDebtPayment = transactionDebt + goalDebtPayment;
 
-    // 5. Fetch Savings Deposits
+    // 5. Fetch Savings Deposits from pf_savings_transactions
     final savingsRes = await _client
         .from('pf_savings_transactions')
         .select('amount, type')
         .eq('user_id', _userId)
         .gte('created_at', startStr)
         .lt('created_at', endStr);
-    int totalSavings = 0;
+    int goalSavings = 0;
     for (final s in (savingsRes as List)) {
       final stype = s['type'] as String;
       final amount = (s['amount'] as num).toInt();
       if (stype == 'deposit') {
-        totalSavings += amount;
+        goalSavings += amount;
       }
     }
+    final totalSavings = transactionSavings + goalSavings;
 
     // 6. Calculate Net Cash Flow & Savings Rate
-    final netCashFlow = totalIncome - totalExpense - totalDebtPayment;
+    final netCashFlow = totalIncome - totalExpense - totalDebtPayment - totalSavings;
     final savingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0.0;
 
     // 7. Build Category Breakdown

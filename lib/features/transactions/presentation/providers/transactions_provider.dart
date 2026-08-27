@@ -1,6 +1,8 @@
 // lib/features/transactions/presentation/providers/transactions_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../../features/debts_savings/presentation/providers/debts_savings_provider.dart';
+import '../../../../features/reports/presentation/providers/reports_provider.dart';
 import '../../../../features/salary_allocation/presentation/providers/salary_allocation_provider.dart';
 import '../../data/transaction_repository.dart';
 import '../../domain/transaction.dart';
@@ -46,8 +48,11 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionModel>> {
     // In-place update to prevent full page reload / spinner
     state = AsyncValue.data([newTx, ...(state.value ?? [])]);
 
-    // Invalidate monthly budgets to reflect newly spent budget
+    // Invalidate monthly budgets, reports, debts, savings
     ref.invalidate(monthlyBudgetsProvider);
+    ref.invalidate(monthlyReportProvider);
+    ref.invalidate(debtsProvider);
+    ref.invalidate(savingsGoalsProvider);
   }
 
   Future<void> editTransaction({
@@ -75,8 +80,11 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionModel>> {
       (state.value ?? []).map((t) => t.id == id ? updatedTx : t).toList(),
     );
 
-    // Invalidate monthly budgets to reflect newly spent budget
+    // Invalidate monthly budgets, reports, debts, savings
     ref.invalidate(monthlyBudgetsProvider);
+    ref.invalidate(monthlyReportProvider);
+    ref.invalidate(debtsProvider);
+    ref.invalidate(savingsGoalsProvider);
   }
 
   Future<void> deleteTransaction(String id) async {
@@ -87,7 +95,10 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionModel>> {
       (state.value ?? []).where((t) => t.id != id).toList(),
     );
 
-    // Invalidate monthly budgets to reflect restored budget
+    // Invalidate monthly budgets, reports, debts, savings
     ref.invalidate(monthlyBudgetsProvider);
+    ref.invalidate(monthlyReportProvider);
+    ref.invalidate(debtsProvider);
+    ref.invalidate(savingsGoalsProvider);
   }
 }

@@ -29,8 +29,12 @@ class AppRoutes {
   static const reports = '/reports';
 }
 
+final GlobalKey<NavigatorState> rootNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'root');
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     refreshListenable: _AuthStateListenable(ref),
     redirect: (context, state) {

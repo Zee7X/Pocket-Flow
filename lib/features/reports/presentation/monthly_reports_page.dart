@@ -7,7 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
+import '../../../core/widgets/app_dropdown_field.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/responsive_center.dart';
 import '../../salary_allocation/presentation/providers/salary_allocation_provider.dart';
 import '../domain/monthly_report.dart';
@@ -56,47 +58,58 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: ResponsiveCenter(
-            maxWidth: 800,
-            padding: const EdgeInsets.all(16),
-            child: reportAsync.when(
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: CircularProgressIndicator(),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(monthlyReportProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ResponsiveCenter(
+              maxWidth: 800,
+              padding: const EdgeInsets.all(16),
+              child: reportAsync.when(
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
+                error: (e, _) => AppErrorWidget(
+                  error: e,
+                  onRetry: () async {
+                    ref.invalidate(monthlyReportProvider);
+                  },
+                ),
+                data: (report) {
+                  final periodLabel =
+                      '${_monthNames[report.month - 1]} ${report.year}';
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── 1. Hero Net Cash Flow Card ──────────────────────────
+                      _buildCashFlowCard(report, periodLabel),
+
+                      const SizedBox(height: 16),
+
+                      // ── 2. Metric Grid: 4 Core Health Indicators ────────────
+                      _buildMetricGrid(report),
+
+                      const SizedBox(height: 24),
+
+                      // ── 3. Analytic Donut Ring Chart (Matching Reference Image)
+                      _buildAnalyticDonutCard(report),
+
+                      const SizedBox(height: 24),
+
+                      // ── 4. Category Breakdown Progress List ─────────────────
+                      _buildCategoryBreakdown(report),
+
+                      const SizedBox(height: 28),
+                    ],
+                  );
+                },
               ),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (report) {
-                final periodLabel =
-                    '${_monthNames[report.month - 1]} ${report.year}';
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── 1. Hero Net Cash Flow Card ──────────────────────────
-                    _buildCashFlowCard(report, periodLabel),
-
-                    const SizedBox(height: 16),
-
-                    // ── 2. Metric Grid: 4 Core Health Indicators ────────────
-                    _buildMetricGrid(report),
-
-                    const SizedBox(height: 24),
-
-                    // ── 3. Analytic Donut Ring Chart (Matching Reference Image)
-                    _buildAnalyticDonutCard(report),
-
-                    const SizedBox(height: 24),
-
-                    // ── 4. Category Breakdown Progress List ─────────────────
-                    _buildCategoryBreakdown(report),
-
-                    const SizedBox(height: 28),
-                  ],
-                );
-              },
             ),
           ),
         ),
@@ -195,7 +208,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
             Expanded(
               child: _buildMetricTile(
                 icon: Icons.payments_outlined,
-                label: 'Gaji Masuk',
+                label: 'Total Pemasukan',
                 value: report.totalIncome.toRupiah,
                 color: AppTheme.success,
                 bgColor: AppTheme.pastelGreen,
@@ -637,15 +650,16 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
           children: [
             Expanded(
               flex: 3,
-              child: DropdownButtonFormField<int>(
-                isExpanded: true,
-                initialValue: m,
+              child: AppDropdownFormField<int>(
+                value: m,
+                labelText: 'Bulan',
+                prefixIcon: const Icon(Icons.calendar_month_outlined, size: 20, color: AppTheme.primary),
                 items: List.generate(12, (i) => i + 1).map((idx) {
                   return DropdownMenuItem(
                     value: idx,
                     child: Text(
                       _monthNames[idx - 1],
-                      style: GoogleFonts.dmSans(),
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
                       overflow: TextOverflow.ellipsis,
                     ),
                   );
@@ -656,16 +670,18 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
             const SizedBox(width: 12),
             Expanded(
               flex: 2,
-              child: DropdownButtonFormField<int>(
-                isExpanded: true,
-                initialValue: y,
-                items: [2024, 2025, 2026, 2027].map((yr) {
+              child: AppDropdownFormField<int>(
+                value: y,
+                labelText: 'Tahun',
+                items: [2024, 2025, 2026, 2027, 2028].map((yr) {
                   return DropdownMenuItem(
                     value: yr,
                     child: Text(
                       '$yr',
-                      style: GoogleFonts.dmSans(),
-                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                   );
                 }).toList(),

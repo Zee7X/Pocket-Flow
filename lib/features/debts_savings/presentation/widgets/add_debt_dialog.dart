@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../../core/widgets/app_dropdown_field.dart';
+import '../../../../core/utils/error_helper.dart';
 import '../../domain/debt.dart';
 import '../providers/debts_savings_provider.dart';
 
@@ -70,17 +72,25 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
               ),
               const SizedBox(height: 14),
 
-              DropdownButtonFormField<DebtType>(
-                isExpanded: true,
-                initialValue: _debtType,
-                decoration: const InputDecoration(labelText: 'Tipe Utang'),
+              AppDropdownFormField<DebtType>(
+                value: _debtType,
+                labelText: 'Tipe Utang / Cicilan',
+                prefixIcon: const Icon(Icons.credit_card_outlined, size: 20, color: AppTheme.danger),
                 items: DebtType.values.map((t) {
+                  final IconData tIcon = switch (t) {
+                    DebtType.paylater => Icons.shopping_bag_outlined,
+                    DebtType.creditCard => Icons.credit_card_rounded,
+                    DebtType.personalLoan => Icons.account_balance_outlined,
+                    DebtType.mortgage => Icons.home_outlined,
+                    DebtType.other => Icons.more_horiz_rounded,
+                  };
                   return DropdownMenuItem(
                     value: t,
-                    child: Text(
-                      t.displayName,
-                      style: GoogleFonts.dmSans(),
-                      overflow: TextOverflow.ellipsis,
+                    child: AppDropdownItemContent(
+                      icon: tIcon,
+                      iconColor: AppTheme.danger,
+                      iconBgColor: AppTheme.pastelRed,
+                      title: t.displayName,
                     ),
                   );
                 }).toList(),
@@ -222,7 +232,7 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
       if (mounted) {
         AppTheme.showErrorSnackBar(
           context,
-          e.toString().replaceAll('Exception: ', ''),
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal mencatat utang. Silakan coba lagi.'),
         );
       }
     }

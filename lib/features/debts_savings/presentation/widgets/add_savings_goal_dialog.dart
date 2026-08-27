@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../../core/widgets/app_dropdown_field.dart';
+import '../../../../core/utils/error_helper.dart';
 import '../../domain/savings_goal.dart';
 import '../providers/debts_savings_provider.dart';
 
@@ -67,17 +69,24 @@ class _AddSavingsGoalDialogState extends ConsumerState<AddSavingsGoalDialog> {
               ),
               const SizedBox(height: 14),
 
-              DropdownButtonFormField<GoalType>(
-                isExpanded: true,
-                initialValue: _goalType,
-                decoration: const InputDecoration(labelText: 'Tipe Target'),
+              AppDropdownFormField<GoalType>(
+                value: _goalType,
+                labelText: 'Tipe Target Tabungan',
+                prefixIcon: const Icon(Icons.savings_outlined, size: 20, color: AppTheme.success),
                 items: GoalType.values.map((t) {
+                  final IconData tIcon = switch (t) {
+                    GoalType.emergencyFund => Icons.shield_outlined,
+                    GoalType.saving => Icons.savings_outlined,
+                    GoalType.purchase => Icons.shopping_cart_outlined,
+                    GoalType.other => Icons.flag_outlined,
+                  };
                   return DropdownMenuItem(
                     value: t,
-                    child: Text(
-                      t.displayName,
-                      style: GoogleFonts.dmSans(),
-                      overflow: TextOverflow.ellipsis,
+                    child: AppDropdownItemContent(
+                      icon: tIcon,
+                      iconColor: AppTheme.success,
+                      iconBgColor: AppTheme.pastelGreen,
+                      title: t.displayName,
                     ),
                   );
                 }).toList(),
@@ -165,7 +174,7 @@ class _AddSavingsGoalDialogState extends ConsumerState<AddSavingsGoalDialog> {
       if (mounted) {
         AppTheme.showErrorSnackBar(
           context,
-          e.toString().replaceAll('Exception: ', ''),
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal membuat target tabungan. Silakan coba lagi.'),
         );
       }
     }

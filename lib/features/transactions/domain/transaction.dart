@@ -30,6 +30,7 @@ class TransactionModel {
   final String? paymentMethod;
   final DateTime createdAt;
   final String? categoryName;
+  final String? categoryType;
   final String? categoryIcon;
   final String? categoryColor;
 
@@ -44,9 +45,22 @@ class TransactionModel {
     this.paymentMethod,
     required this.createdAt,
     this.categoryName,
+    this.categoryType,
     this.categoryIcon,
     this.categoryColor,
   });
+
+  bool get isSavings =>
+      categoryType == 'savings' ||
+      categoryType == 'saving' ||
+      (categoryName?.toLowerCase().contains('tabungan') == true) ||
+      (categoryName?.toLowerCase().contains('investasi') == true) ||
+      (categoryName?.toLowerCase().contains('darurat') == true);
+
+  bool get isDebt =>
+      categoryType == 'debt' ||
+      (categoryName?.toLowerCase().contains('utang') == true) ||
+      (categoryName?.toLowerCase().contains('cicilan') == true);
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     final cat = json['pf_categories'] as Map<String, dynamic>?;
@@ -62,6 +76,7 @@ class TransactionModel {
       paymentMethod: null,
       createdAt: DateTime.parse(json['created_at'] as String),
       categoryName: cat?['name'] as String?,
+      categoryType: cat?['type'] as String?,
       categoryIcon: cat?['icon'] as String?,
       categoryColor: cat?['color'] as String?,
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/utils/error_helper.dart';
 import '../../domain/category.dart';
 import '../providers/categories_rules_provider.dart';
 
@@ -276,7 +277,7 @@ class _AddCategoryDialogState extends ConsumerState<AddCategoryDialog> {
       if (mounted) {
         AppTheme.showErrorSnackBar(
           context,
-          e.toString().replaceAll('Exception: ', ''),
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal menambahkan kategori. Silakan coba lagi.'),
         );
       }
     }

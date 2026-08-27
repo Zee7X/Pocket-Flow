@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/widgets/error_state.dart';
 import '../providers/categories_rules_provider.dart';
 
 class TemplatePickerDialog extends ConsumerStatefulWidget {
@@ -38,7 +39,13 @@ class _TemplatePickerDialogState extends ConsumerState<TemplatePickerDialog> {
         width: double.maxFinite,
         child: templatesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Error memuat template: $e'),
+          error: (e, _) => AppErrorWidget(
+            error: e,
+            compact: true,
+            onRetry: () async {
+              ref.invalidate(categoryTemplatesProvider);
+            },
+          ),
           data: (groups) {
             return ListView.separated(
               shrinkWrap: true,

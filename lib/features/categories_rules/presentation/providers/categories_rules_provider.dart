@@ -29,7 +29,7 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
     return ref.watch(categoryRepositoryProvider).getCategories();
   }
 
-  Future<void> addCategory({
+  Future<Category> addCategory({
     required String name,
     required CategoryType type,
     String? icon,
@@ -44,6 +44,7 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
           isFixed: isFixed,
         );
     state = AsyncValue.data([...(state.value ?? []), newCat]);
+    return newCat;
   }
 
   Future<void> updateCategory({

@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/extensions/currency_extension.dart';
 import '../../../../core/formatters/currency_input_formatter.dart';
+import '../../../../core/widgets/app_dropdown_field.dart';
+import '../../../../core/utils/error_helper.dart';
 import '../../../categories_rules/domain/category.dart';
 import '../../../categories_rules/presentation/providers/categories_rules_provider.dart';
 import '../../../debts_savings/domain/savings_transaction.dart';
@@ -226,26 +228,97 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             ),
             const SizedBox(height: 14),
 
-            // Category dropdown
-            DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: _selectedCategoryId,
-              decoration: const InputDecoration(labelText: 'Kategori'),
-              hint: Text(
-                'Pilih Kategori (opsional)',
-                style: GoogleFonts.dmSans(color: AppTheme.textDarkMuted),
-                overflow: TextOverflow.ellipsis,
-              ),
-              items: filteredCategories.map((c) {
-                return DropdownMenuItem(
-                  value: c.id,
-                  child: Text(
-                    c.name,
-                    style: GoogleFonts.dmSans(),
-                    overflow: TextOverflow.ellipsis,
+            // Category label & Quick add button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Kategori',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textDarkSecondary,
                   ),
-                );
-              }).toList(),
+                ),
+                InkWell(
+                  onTap: () => _quickAddCategory(),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_circle_outline_rounded,
+                            size: 15, color: AppTheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Kategori Baru',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // Category dropdown
+            AppDropdownFormField<String>(
+              value: _selectedCategoryId,
+              labelText: '',
+              hintText: 'Pilih Kategori (opsional)',
+              prefixIcon: Icon(
+                _type == TransactionType.income
+                    ? Icons.savings_outlined
+                    : Icons.category_outlined,
+                size: 20,
+                color: _type == TransactionType.income
+                    ? AppTheme.success
+                    : AppTheme.primary,
+              ),
+              items: [
+                const DropdownMenuItem(
+                  value: null,
+                  child: AppDropdownItemContent(
+                    icon: Icons.label_off_outlined,
+                    iconColor: AppTheme.textDarkMuted,
+                    iconBgColor: AppTheme.surfaceLightAlt,
+                    title: 'Tanpa Kategori (Umum)',
+                  ),
+                ),
+                ...filteredCategories.map((c) {
+                  return DropdownMenuItem(
+                    value: c.id,
+                    child: AppDropdownItemContent(
+                      icon: c.isFixed
+                          ? Icons.push_pin_rounded
+                          : (_type == TransactionType.income
+                              ? Icons.account_balance_wallet_outlined
+                              : Icons.folder_outlined),
+                      iconColor: _type == TransactionType.income
+                          ? AppTheme.success
+                          : (c.isFixed ? AppTheme.warning : AppTheme.primary),
+                      iconBgColor: _type == TransactionType.income
+                          ? AppTheme.pastelGreen
+                          : (c.isFixed
+                              ? AppTheme.pastelYellow
+                              : AppTheme.pastelBlue),
+                      title: c.name,
+                      badgeText: _type == TransactionType.income
+                          ? 'Pemasukan'
+                          : (c.isFixed ? 'Tetap' : 'Variabel'),
+                      badgeColor: _type == TransactionType.income
+                          ? AppTheme.success
+                          : (c.isFixed ? AppTheme.warning : AppTheme.primary),
+                    ),
+                  );
+                }),
+              ],
               onChanged: (val) {
                 setState(() {
                   _selectedCategoryId = val;
@@ -254,40 +327,96 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
                 });
               },
             ),
+
+            // Quick Preset Chips for Income if none exist yet
+            if (_type == TransactionType.income && filteredCategories.isEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.pastelGreen.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                  border: Border.all(color: AppTheme.success.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.auto_awesome_rounded,
+                            size: 14, color: AppTheme.success),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Pilih Cepat Kategori Pemasukan:',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textDarkPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        'Gaji Utama',
+                        'Bonus & THR',
+                        'Freelance',
+                        'Investasi',
+                        'Pemasukan Lainnya',
+                      ].map((preset) {
+                        return ActionChip(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          backgroundColor: Colors.white,
+                          side: const BorderSide(color: AppTheme.borderLight),
+                          label: Text(
+                            '+ $preset',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.success,
+                            ),
+                          ),
+                          onPressed: () => _quickAddCategory(preset),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
 
             // Optional Linked Debt Dropdown
             if (_type == TransactionType.expense &&
                 activeDebts.isNotEmpty &&
                 (isDebtCategory || _linkedDebtId != null)) ...[
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _linkedDebtId,
-                decoration: const InputDecoration(
-                  labelText: 'Potong Catatan Pinjaman',
-                  suffixIcon: Tooltip(
-                    message:
-                        'Jika dipilih, sisa pokok pinjaman tersebut akan otomatis berkurang.',
-                    triggerMode: TooltipTriggerMode.tap,
-                    child: Icon(Icons.help_outline_rounded,
-                        size: 18, color: AppTheme.textDarkMuted),
-                  ),
-                ),
-                hint: Text(
-                  'Pilih Utang (opsional)',
-                  style: GoogleFonts.dmSans(color: AppTheme.textDarkMuted),
-                  overflow: TextOverflow.ellipsis,
-                ),
+              AppDropdownFormField<String>(
+                value: _linkedDebtId,
+                labelText: 'Potong Catatan Pinjaman',
+                hintText: 'Pilih Utang (opsional)',
+                prefixIcon: const Icon(Icons.receipt_long_outlined, size: 20, color: AppTheme.danger),
                 items: [
                   const DropdownMenuItem(
                     value: null,
-                    child: Text('Jangan hubungkan ke utang tertentu'),
+                    child: AppDropdownItemContent(
+                      icon: Icons.do_not_disturb_on_outlined,
+                      iconColor: AppTheme.textDarkMuted,
+                      iconBgColor: AppTheme.surfaceLightAlt,
+                      title: 'Jangan hubungkan ke utang tertentu',
+                    ),
                   ),
                   ...activeDebts.map((d) => DropdownMenuItem(
                         value: d.id,
-                        child: Text(
-                          '${d.name} (Sisa: ${d.remainingAmount.toRupiah})',
-                          overflow: TextOverflow.ellipsis,
+                        child: AppDropdownItemContent(
+                          icon: Icons.credit_card_off_rounded,
+                          iconColor: AppTheme.danger,
+                          iconBgColor: AppTheme.pastelRed,
+                          title: d.name,
+                          subtitle: 'Sisa utang: ${d.remainingAmount.toRupiah}',
                         ),
                       )),
                 ],
@@ -300,34 +429,29 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             if (_type == TransactionType.expense &&
                 activeGoals.isNotEmpty &&
                 (isSavingCategory || _linkedGoalId != null)) ...[
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _linkedGoalId,
-                decoration: const InputDecoration(
-                  labelText: 'Setor ke Target Tabungan',
-                  suffixIcon: Tooltip(
-                    message:
-                        'Jika dipilih, saldo terkumpul pada target tersebut akan otomatis bertambah.',
-                    triggerMode: TooltipTriggerMode.tap,
-                    child: Icon(Icons.help_outline_rounded,
-                        size: 18, color: AppTheme.textDarkMuted),
-                  ),
-                ),
-                hint: Text(
-                  'Pilih Target (opsional)',
-                  style: GoogleFonts.dmSans(color: AppTheme.textDarkMuted),
-                  overflow: TextOverflow.ellipsis,
-                ),
+              AppDropdownFormField<String>(
+                value: _linkedGoalId,
+                labelText: 'Setor ke Target Tabungan',
+                hintText: 'Pilih Target (opsional)',
+                prefixIcon: const Icon(Icons.savings_outlined, size: 20, color: AppTheme.success),
                 items: [
                   const DropdownMenuItem(
                     value: null,
-                    child: Text('Jangan hubungkan ke target tertentu'),
+                    child: AppDropdownItemContent(
+                      icon: Icons.do_not_disturb_on_outlined,
+                      iconColor: AppTheme.textDarkMuted,
+                      iconBgColor: AppTheme.surfaceLightAlt,
+                      title: 'Jangan hubungkan ke target tertentu',
+                    ),
                   ),
                   ...activeGoals.map((g) => DropdownMenuItem(
                         value: g.id,
-                        child: Text(
-                          '${g.name} (Terkumpul: ${g.currentAmount.toRupiah})',
-                          overflow: TextOverflow.ellipsis,
+                        child: AppDropdownItemContent(
+                          icon: Icons.savings_rounded,
+                          iconColor: AppTheme.success,
+                          iconBgColor: AppTheme.pastelGreen,
+                          title: g.name,
+                          subtitle: 'Terkumpul: ${g.currentAmount.toRupiah}',
                         ),
                       )),
                 ],
@@ -352,17 +476,33 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
               children: [
                 Expanded(
                   flex: 5,
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _paymentMethod,
-                    decoration: const InputDecoration(labelText: 'Metode'),
+                  child: AppDropdownFormField<String>(
+                    value: _paymentMethod,
+                    labelText: 'Metode',
                     items: _paymentMethods.map((m) {
+                      final IconData mIcon = switch (m) {
+                        'Transfer Bank' => Icons.account_balance_rounded,
+                        'Tunai' => Icons.payments_outlined,
+                        'QRIS' => Icons.qr_code_2_rounded,
+                        'Kartu Debit' => Icons.credit_card_rounded,
+                        'Kartu Kredit' => Icons.credit_card_rounded,
+                        'E-Wallet' => Icons.account_balance_wallet_rounded,
+                        _ => Icons.payment_rounded,
+                      };
                       return DropdownMenuItem(
                         value: m,
-                        child: Text(
-                          m,
-                          style: GoogleFonts.dmSans(),
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            Icon(mIcon, size: 16, color: AppTheme.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                m,
+                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     }).toList(),
@@ -412,6 +552,86 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
         ),
       ],
     );
+  }
+
+  Future<void> _quickAddCategory([String? presetName]) async {
+    final nameCtrl = TextEditingController(text: presetName ?? '');
+    final isSaved = presetName != null
+        ? true
+        : await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppTheme.surfaceLight,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+              ),
+              title: Text(
+                _type == TransactionType.income
+                    ? 'Tambah Kategori Pemasukan'
+                    : 'Tambah Kategori Pengeluaran',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDarkPrimary,
+                ),
+              ),
+              content: TextField(
+                controller: nameCtrl,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: 'Nama Kategori',
+                  hintText: _type == TransactionType.income
+                      ? 'misal: Gaji Pokok, Bonus, Freelance'
+                      : 'misal: Makan, Transport, Pulsa',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Simpan'),
+                ),
+              ],
+            ),
+          );
+
+    if (isSaved == true && nameCtrl.text.trim().isNotEmpty) {
+      final name = nameCtrl.text.trim();
+      try {
+        final newCat = await ref.read(categoriesProvider.notifier).addCategory(
+              name: name,
+              type: _type == TransactionType.income
+                  ? CategoryType.income
+                  : CategoryType.expense,
+              isFixed: false,
+            );
+        if (!mounted) {
+          nameCtrl.dispose();
+          return;
+        }
+        setState(() {
+          _selectedCategoryId = newCat.id;
+        });
+        AppTheme.showSuccessSnackBar(
+          context,
+          'Kategori "$name" berhasil dipilih!',
+        );
+      } catch (e) {
+        if (!mounted) {
+          nameCtrl.dispose();
+          return;
+        }
+        AppTheme.showErrorSnackBar(
+          context,
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal menambahkan kategori.'),
+        );
+      }
+    }
+    nameCtrl.dispose();
   }
 
   Future<void> _pickDate() async {
@@ -523,7 +743,7 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
       if (mounted) {
         AppTheme.showErrorSnackBar(
           context,
-          e.toString().replaceAll('Exception: ', ''),
+          ErrorHelper.getHumanReadableMessage(e, fallback: 'Gagal menyimpan transaksi. Silakan coba lagi.'),
         );
       }
     }

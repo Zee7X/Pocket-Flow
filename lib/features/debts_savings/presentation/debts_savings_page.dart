@@ -7,6 +7,7 @@ import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/responsive_center.dart';
 import '../domain/debt.dart';
 import '../domain/savings_goal.dart';
@@ -114,7 +115,12 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
   Widget _buildSavingsTab(AsyncValue<List<SavingsGoal>> savingsAsync) {
     return savingsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => AppErrorWidget(
+        error: e,
+        onRetry: () async {
+          ref.invalidate(savingsGoalsProvider);
+        },
+      ),
       data: (goals) {
         if (goals.isEmpty) {
           return EmptyStateWidget(
@@ -345,7 +351,12 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
   Widget _buildDebtsTab(AsyncValue<List<Debt>> debtsAsync) {
     return debtsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => AppErrorWidget(
+        error: e,
+        onRetry: () async {
+          ref.invalidate(debtsProvider);
+        },
+      ),
       data: (debts) {
         if (debts.isEmpty) {
           return EmptyStateWidget(
