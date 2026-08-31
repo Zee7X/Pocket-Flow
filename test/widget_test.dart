@@ -29,6 +29,10 @@ import 'package:pocket_flow/features/salary_allocation/presentation/salary_alloc
 import 'package:pocket_flow/features/transactions/domain/transaction.dart';
 import 'package:pocket_flow/features/transactions/presentation/providers/transactions_provider.dart';
 import 'package:pocket_flow/features/transactions/presentation/transactions_page.dart';
+import 'package:pocket_flow/features/categories_rules/presentation/widgets/add_rule_dialog.dart';
+import 'package:pocket_flow/features/salary_allocation/presentation/widgets/allocation_preview_sheet.dart';
+import 'package:pocket_flow/features/salary_allocation/presentation/widgets/salary_history_detail_sheet.dart';
+import 'package:pocket_flow/features/transactions/presentation/widgets/add_transaction_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MockAuthNotifier extends AuthNotifier {
@@ -195,6 +199,7 @@ Widget createTestApp(
 class _MockTransactionsNotifier extends TransactionsNotifier {
   @override
   Future<List<TransactionModel>> build() async {
+    final now = DateTime.now();
     return [
       TransactionModel(
         id: 't1',
@@ -205,6 +210,17 @@ class _MockTransactionsNotifier extends TransactionsNotifier {
         description: 'Makan siang',
         categoryName: 'Makan',
         createdAt: DateTime(2026, 8, 20),
+      ),
+      // Future-dated (scheduled) transaction two months ahead
+      TransactionModel(
+        id: 't2',
+        userId: 'test-user',
+        type: TransactionType.expense,
+        amount: 350000,
+        transactionDate: DateTime(now.year, now.month + 2, 5),
+        description: 'Bayar Internet',
+        categoryName: 'Internet',
+        createdAt: now,
       ),
     ];
   }
@@ -342,9 +358,6 @@ void main() {
     });
 
     testWidgets('3B. DashboardPage renders Sisa Saldo Kas & Income/Expense (Without Allocation Mode)', (tester) async {
-      FlutterError.onError = (details) {
-        FlutterError.dumpErrorToConsole(details);
-      };
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -359,7 +372,7 @@ void main() {
 
       expect(find.text('Sisa Saldo Kas Bulan Ini'), findsOneWidget);
       expect(find.text('Total Pemasukan'), findsOneWidget);
-      expect(find.text('Total Pengeluaran'), findsOneWidget);
+      expect(find.text('Pengeluaran'), findsOneWidget);
       expect(find.text('Ingin Budget Otomatis dari Gaji?'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -389,14 +402,36 @@ void main() {
       expect(find.text('Semua'), findsOneWidget);
       expect(find.text('Pengeluaran'), findsOneWidget);
       expect(find.text('Pemasukan'), findsOneWidget);
+      expect(find.text('Akan Datang'), findsOneWidget);
       expect(find.text('Makan siang'), findsOneWidget);
+      // Future-dated transaction renders with the upcoming badge in its subtitle
+      expect(find.textContaining('Akan Datang'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('5B. TransactionsPage upcoming filter shows only scheduled transactions', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(createTestApp(const TransactionsPage()));
+      await tester.pumpAndSettle();
+
+      // Both actual & scheduled transactions visible by default
+      expect(find.text('Makan siang'), findsOneWidget);
+      // Scroll to ensure the Akan Datang chip is in view on standard mobile screen
+      final upcomingChip = find.widgetWithText(ChoiceChip, 'Akan Datang');
+      await tester.ensureVisible(upcomingChip);
+      await tester.tap(upcomingChip);
+      await tester.pumpAndSettle();
+
+      // Only the future-dated transaction remains
+      expect(find.text('Bayar Internet'), findsOneWidget);
+      expect(find.text('Makan siang'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('6. DebtsSavingsPage renders targets & loans', (tester) async {
-      FlutterError.onError = (details) {
-        FlutterError.dumpErrorToConsole(details);
-      };
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -631,6 +666,205 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('16. AddTransactionDialog renders & responsive on Small & Standard screens with Keyboard', (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetViewInsets();
+      });
+
+      await tester.pumpWidget(createTestApp(
+        Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => const AddTransactionDialog(),
+            ),
+            child: const Text('Open'),
+          ),
+        ),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Catat Transaksi'), findsOneWidget);
+      expect(find.text('Pengeluaran'), findsOneWidget);
+      expect(find.text('Pemasukan'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('17. AddRuleDialog renders & responsive with Decimal Percentage & Keyboard', (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetViewInsets();
+      });
+
+      final testCat = Category(
+        id: 'cat-zakat',
+        userId: 'test-user',
+        name: 'Zakat',
+        type: CategoryType.expense,
+        createdAt: DateTime(2026, 8, 20),
+      );
+
+      const testRule = AllocationRule(
+        id: 'rule-zakat',
+        userId: 'test-user',
+        categoryId: 'cat-zakat',
+        name: 'Zakat',
+        allocationType: AllocationType.percentage,
+        percentage: 2.5,
+        percentageBase: PercentageBase.totalIncome,
+      );
+
+      await tester.pumpWidget(createTestApp(
+        Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => AddRuleDialog(
+                categories: [testCat],
+                initialRule: testRule,
+              ),
+            ),
+            child: const Text('Open'),
+          ),
+        ),
+        screenSize: const Size(320, 568),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Atur Alokasi: Zakat'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, '2,5'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('18. AllocationPreviewSheet renders breakdown & warnings without overflow', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final result = SalaryAllocationResult(
+        success: true,
+        salaryAmount: 5500000,
+        totalAllocated: 5500000,
+        periodMonth: 9,
+        periodYear: 2026,
+        remaining: 0,
+        allocations: [
+          const RuleAllocationItem(
+            ruleId: 'r1',
+            ruleName: 'Zakat (2,5%)',
+            categoryId: 'c1',
+            allocationType: 'percentage',
+            allocatedAmount: 137500,
+          ),
+          const RuleAllocationItem(
+            ruleId: 'r2',
+            ruleName: 'Makan',
+            categoryId: 'c2',
+            allocationType: 'capped',
+            allocatedAmount: 1000000,
+          ),
+        ],
+        warnings: [],
+      );
+
+      await tester.pumpWidget(createTestApp(
+        Scaffold(
+          body: AllocationPreviewSheet(
+            result: result,
+            onConfirm: () {},
+          ),
+        ),
+        screenSize: const Size(360, 640),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hasil Preview Alokasi'), findsOneWidget);
+      expect(find.text('Zakat (2,5%)'), findsOneWidget);
+      expect(find.text('Makan'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('19. SalaryHistoryDetailSheet renders history details without overflow', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final entry = SalaryEntry(
+        id: 'sal-1',
+        userId: 'test-user',
+        amount: 5500000,
+        salaryDate: DateTime(2026, 9, 1),
+        periodMonth: 9,
+        periodYear: 2026,
+        createdAt: DateTime(2026, 9, 1),
+      );
+
+      await tester.pumpWidget(createTestApp(
+        Scaffold(
+          body: SalaryHistoryDetailSheet(
+            entry: entry,
+            onEditForm: () {},
+          ),
+        ),
+        screenSize: const Size(360, 640),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('Teralokasi'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('20. Ultra-Wide Desktop (1920x1080) & Tablet (768x1024) Responsiveness', (tester) async {
+      // 1. Ultra-Wide Desktop (1920x1080)
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+
+      await tester.pumpWidget(createTestApp(
+        const DashboardPage(),
+        screenSize: const Size(1920, 1080),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(createTestApp(
+        const TransactionsPage(),
+        screenSize: const Size(1920, 1080),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // 2. Tablet (768x1024)
+      tester.view.physicalSize = const Size(768, 1024);
+      await tester.pumpWidget(createTestApp(
+        const MonthlyReportsPage(),
+        screenSize: const Size(768, 1024),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(createTestApp(
+        const CategoriesRulesPage(),
+        screenSize: const Size(768, 1024),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      tester.view.resetPhysicalSize();
     });
   });
 }

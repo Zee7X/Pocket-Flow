@@ -24,6 +24,7 @@ final debtsProvider = AsyncNotifierProvider<DebtsNotifier, List<Debt>>(
 class DebtsNotifier extends AsyncNotifier<List<Debt>> {
   @override
   Future<List<Debt>> build() async {
+    if (ref.watch(currentUserIdProvider) == null) return const [];
     return ref.watch(debtRepositoryProvider).getDebts();
   }
 
@@ -82,6 +83,7 @@ final savingsGoalsProvider =
 class SavingsGoalsNotifier extends AsyncNotifier<List<SavingsGoal>> {
   @override
   Future<List<SavingsGoal>> build() async {
+    if (ref.watch(currentUserIdProvider) == null) return const [];
     return ref.watch(savingsRepositoryProvider).getSavingsGoals();
   }
 

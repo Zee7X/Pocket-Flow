@@ -15,6 +15,18 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(supabaseClientProvider));
 });
 
+// ─── Current user id ─────────────────────────────────────────────────────────
+/// Id of the signed-in user, or null when logged out.
+///
+/// Data providers must watch this so their state is rebuilt whenever the
+/// signed-in account changes — otherwise a newly logged-in account inherits
+/// the previous account's cached numbers.
+final currentUserIdProvider = Provider<String?>((ref) {
+  return ref.watch(authProvider.select(
+    (state) => state is domain.AuthAuthenticated ? state.userId : null,
+  ));
+});
+
 // ─── Auth state notifier ─────────────────────────────────────────────────────
 class AuthNotifier extends Notifier<domain.AuthState> {
   @override

@@ -451,6 +451,12 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
     );
   }
 
+  String _formatPct(double? value) {
+    if (value == null || value <= 0) return '0';
+    if (value % 1 == 0) return value.toInt().toString();
+    return value.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '').replaceAll('.', ',');
+  }
+
   String _formatRuleFormula(AllocationRule rule) {
     switch (rule.allocationType) {
       case AllocationType.fixed:
@@ -458,7 +464,7 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
             ? 'Nominal: ${rule.fixedAmount.toRupiah}'
             : 'Rp0 (Ketuk untuk atur nominal)';
       case AllocationType.percentage:
-        final pct = (rule.percentage ?? 0).toStringAsFixed(0);
+        final pct = _formatPct(rule.percentage);
         final base = _getBaseLabel(rule.percentageBase);
         return (rule.percentage ?? 0) > 0
             ? '$pct% dari $base'
@@ -470,7 +476,7 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
       case AllocationType.remaining:
         return 'Semua sisa penghasilan (100%)';
       case AllocationType.proportional:
-        final pct = (rule.percentage ?? 0).toStringAsFixed(0);
+        final pct = _formatPct(rule.percentage);
         return 'Proporsional $pct%';
     }
   }

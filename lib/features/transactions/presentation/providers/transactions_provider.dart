@@ -20,6 +20,8 @@ final transactionsProvider =
 class TransactionsNotifier extends AsyncNotifier<List<TransactionModel>> {
   @override
   Future<List<TransactionModel>> build() async {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
     final period = ref.watch(selectedPeriodProvider);
     return ref.watch(transactionRepositoryProvider).getTransactions(
           month: period.month,

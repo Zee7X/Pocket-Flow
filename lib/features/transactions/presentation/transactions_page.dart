@@ -87,6 +87,8 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                     _buildFilterChip('Pengeluaran', 'expense'),
                     const SizedBox(width: 8),
                     _buildFilterChip('Pemasukan', 'income'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Akan Datang', 'upcoming'),
                   ],
                 ),
               ),
@@ -111,6 +113,9 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                       if (_filter == 'income') {
                         return t.type == TransactionType.income;
                       }
+                      if (_filter == 'upcoming') {
+                        return t.isUpcoming;
+                      }
                       return true;
                     }).toList();
 
@@ -133,6 +138,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                         final isExpense = tx.type == TransactionType.expense;
                         final isSavings = tx.isSavings;
                         final isDebt = tx.isDebt;
+                        final isUpcoming = tx.isUpcoming;
 
                         final Color iconColor = isSavings
                             ? AppTheme.primary
@@ -197,12 +203,14 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${tx.categoryName != null ? "${tx.categoryName!} • " : ""}${DateFormat('dd MMM yyyy').format(tx.transactionDate)}${isSavings ? " • Disimpan" : ""}',
+                                      '${tx.categoryName != null ? "${tx.categoryName!} • " : ""}${DateFormat('dd MMM yyyy').format(tx.transactionDate)}${isSavings ? " • Disimpan" : ""}${isUpcoming ? " • Akan Datang" : ""}',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 11,
                                         color: isSavings
                                             ? AppTheme.primary
-                                            : AppTheme.textDarkMuted,
+                                            : (isUpcoming
+                                                ? AppTheme.warning
+                                                : AppTheme.textDarkMuted),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,

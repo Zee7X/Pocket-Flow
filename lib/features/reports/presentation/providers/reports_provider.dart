@@ -16,6 +16,20 @@ final reportSelectedPeriodProvider =
 
 final monthlyReportProvider = FutureProvider<MonthlyReport>((ref) async {
   final period = ref.watch(reportSelectedPeriodProvider);
+  if (ref.watch(currentUserIdProvider) == null) {
+    return MonthlyReport(
+      month: period.month,
+      year: period.year,
+      totalIncome: 0,
+      totalExpense: 0,
+      totalSavings: 0,
+      totalDebtPayment: 0,
+      netCashFlow: 0,
+      savingsRate: 0,
+      categoryBreakdown: const [],
+      rawBudgets: const [],
+    );
+  }
   return ref.watch(reportRepositoryProvider).getMonthlyReport(
         month: period.month,
         year: period.year,

@@ -20,6 +20,7 @@ final selectedPeriodProvider = StateProvider<({int month, int year})>((ref) {
 // Monthly budgets for selected period
 final monthlyBudgetsProvider =
     FutureProvider<List<MonthlyBudget>>((ref) async {
+  if (ref.watch(currentUserIdProvider) == null) return const [];
   final period = ref.watch(selectedPeriodProvider);
   return ref.watch(salaryRepositoryProvider).getMonthlyBudgets(
         periodMonth: period.month,
@@ -30,13 +31,19 @@ final monthlyBudgetsProvider =
 // Salary history
 final salaryHistoryProvider =
     FutureProvider<List<SalaryEntry>>((ref) async {
+  if (ref.watch(currentUserIdProvider) == null) return const [];
   return ref.watch(salaryRepositoryProvider).getSalaryHistory();
 });
 
 // Allocation engine action notifier
 final salaryAllocationActionProvider =
     StateNotifierProvider<SalaryAllocationActionNotifier, AsyncValue<SalaryAllocationResult?>>(
-  (ref) => SalaryAllocationActionNotifier(ref.watch(salaryRepositoryProvider), ref),
+  (ref) {
+    // Re-create the notifier so stale allocation results don't leak
+    // into a newly signed-in account.
+    ref.watch(currentUserIdProvider);
+    return SalaryAllocationActionNotifier(ref.watch(salaryRepositoryProvider), ref);
+  },
 );
 
 class SalaryAllocationActionNotifier

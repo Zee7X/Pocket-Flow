@@ -121,6 +121,8 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
     return AlertDialog(
       scrollable: true,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      actionsOverflowButtonSpacing: 8,
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
@@ -140,69 +142,89 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Type Segmented Switch
-            Row(
-              children: [
-                Expanded(
-                  child: ChoiceChip(
-                    showCheckmark: false,
-                    label: Center(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('Pengeluaran', style: GoogleFonts.dmSans()),
-                      ),
-                    ),
-                    selected: _type == TransactionType.expense,
-                    selectedColor: AppTheme.danger.withValues(alpha: 0.15),
-                    backgroundColor: AppTheme.surfaceLightAlt,
-                    labelStyle: TextStyle(
-                      color: _type == TransactionType.expense
-                          ? AppTheme.danger
-                          : AppTheme.textDarkSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    onSelected: (v) {
-                      if (v) {
+            // Type Segmented Toggle
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceLightAlt,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                border: Border.all(color: AppTheme.borderLightSubtle),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
                         setState(() {
                           _type = TransactionType.expense;
                           _selectedCategoryId = null;
                         });
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ChoiceChip(
-                    showCheckmark: false,
-                    label: Center(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('Pemasukan', style: GoogleFonts.dmSans()),
+                      },
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _type == TransactionType.expense
+                              ? AppTheme.danger.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          border: _type == TransactionType.expense
+                              ? Border.all(color: AppTheme.danger.withValues(alpha: 0.3))
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Pengeluaran',
+                          style: GoogleFonts.dmSans(
+                            color: _type == TransactionType.expense
+                                ? AppTheme.danger
+                                : AppTheme.textDarkSecondary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
-                    selected: _type == TransactionType.income,
-                    selectedColor: AppTheme.success.withValues(alpha: 0.15),
-                    backgroundColor: AppTheme.surfaceLightAlt,
-                    labelStyle: TextStyle(
-                      color: _type == TransactionType.income
-                          ? AppTheme.success
-                          : AppTheme.textDarkSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    onSelected: (v) {
-                      if (v) {
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
                         setState(() {
                           _type = TransactionType.income;
                           _selectedCategoryId = null;
                           _linkedDebtId = null;
                           _linkedGoalId = null;
                         });
-                      }
-                    },
+                      },
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _type == TransactionType.income
+                              ? AppTheme.success.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          border: _type == TransactionType.income
+                              ? Border.all(color: AppTheme.success.withValues(alpha: 0.3))
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Pemasukan',
+                          style: GoogleFonts.dmSans(
+                            color: _type == TransactionType.income
+                                ? AppTheme.success
+                                : AppTheme.textDarkSecondary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -232,12 +254,14 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Kategori',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textDarkSecondary,
+                Expanded(
+                  child: Text(
+                    'Kategori',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textDarkSecondary,
+                    ),
                   ),
                 ),
                 InkWell(
@@ -270,7 +294,6 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             // Category dropdown
             AppDropdownFormField<String>(
               value: _selectedCategoryId,
-              labelText: '',
               hintText: 'Pilih Kategori (opsional)',
               prefixIcon: Icon(
                 _type == TransactionType.income
@@ -471,67 +494,95 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             ),
             const SizedBox(height: 14),
 
-            // Payment method & Date
-            Row(
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: AppDropdownFormField<String>(
-                    value: _paymentMethod,
-                    labelText: 'Metode',
-                    items: _paymentMethods.map((m) {
-                      final IconData mIcon = switch (m) {
-                        'Transfer Bank' => Icons.account_balance_rounded,
-                        'Tunai' => Icons.payments_outlined,
-                        'QRIS' => Icons.qr_code_2_rounded,
-                        'Kartu Debit' => Icons.credit_card_rounded,
-                        'Kartu Kredit' => Icons.credit_card_rounded,
-                        'E-Wallet' => Icons.account_balance_wallet_rounded,
-                        _ => Icons.payment_rounded,
-                      };
-                      return DropdownMenuItem(
-                        value: m,
-                        child: Row(
-                          children: [
-                            Icon(mIcon, size: 16, color: AppTheme.primary),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                m,
-                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (val) => setState(() => _paymentMethod = val!),
+            // Payment method
+            AppDropdownFormField<String>(
+              value: _paymentMethod,
+              labelText: 'Metode Pembayaran',
+              items: _paymentMethods.map((m) {
+                final IconData mIcon = switch (m) {
+                  'Transfer Bank' => Icons.account_balance_rounded,
+                  'Tunai' => Icons.payments_outlined,
+                  'QRIS' => Icons.qr_code_2_rounded,
+                  'Kartu Debit' => Icons.credit_card_rounded,
+                  'Kartu Kredit' => Icons.credit_card_rounded,
+                  'E-Wallet' => Icons.account_balance_wallet_rounded,
+                  _ => Icons.payment_rounded,
+                };
+                return DropdownMenuItem(
+                  value: m,
+                  child: AppDropdownItemContent(
+                    icon: mIcon,
+                    iconColor: AppTheme.primary,
+                    iconBgColor: AppTheme.pastelBlue,
+                    title: m,
                   ),
+                );
+              }).toList(),
+              onChanged: (val) => setState(() => _paymentMethod = val!),
+            ),
+            const SizedBox(height: 14),
+
+            // Date Button
+            OutlinedButton.icon(
+              onPressed: _pickDate,
+              icon: Icon(
+                Icons.calendar_today_rounded,
+                size: 16,
+                color: _isUpcoming ? AppTheme.warning : AppTheme.primary,
+              ),
+              label: Text(
+                'Tanggal: ${DateFormat('dd MMMM yyyy').format(_transactionDate)}',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textDarkPrimary,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 4,
-                  child: OutlinedButton.icon(
-                    onPressed: _pickDate,
-                    icon: const Icon(Icons.calendar_today_rounded, size: 14),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                ),
+                side: BorderSide(
+                  color: _isUpcoming
+                      ? AppTheme.warning
+                      : AppTheme.borderLight,
+                ),
+                foregroundColor: AppTheme.textDarkPrimary,
+              ),
+            ),
+            // Scheduled (future-dated) transaction hint
+            if (_isUpcoming) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.pastelAmber.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                  border: Border.all(
+                      color: AppTheme.warning.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.schedule_rounded,
+                        size: 14, color: AppTheme.warning),
+                    const SizedBox(width: 6),
+                    Expanded(
                       child: Text(
-                        DateFormat('dd/MM').format(_transactionDate),
-                        style: GoogleFonts.dmSans(fontSize: 12),
+                        'Transaksi terjadwal — akan tercatat di bulan ${_monthYearLabel(_transactionDate)}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textDarkPrimary,
+                        ),
                       ),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(double.infinity, 44),
-                      side: const BorderSide(color: AppTheme.borderLight),
-                      foregroundColor: AppTheme.textDarkPrimary,
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ],
         ),
       ),
@@ -546,7 +597,6 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             backgroundColor: _type == TransactionType.expense
                 ? AppTheme.danger
                 : AppTheme.success,
-            minimumSize: const Size(100, 42),
           ),
           child: Text(isEditing ? 'Simpan Edit' : 'Simpan'),
         ),
@@ -634,12 +684,33 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
     nameCtrl.dispose();
   }
 
+  bool get _isUpcoming {
+    final now = DateTime.now();
+    final txDate = DateTime(_transactionDate.year, _transactionDate.month, _transactionDate.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return txDate.isAfter(today);
+  }
+
+  static const _monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  ];
+
+  String _monthYearLabel(DateTime date) =>
+      '${_monthNames[date.month - 1]} ${date.year}';
+
   Future<void> _pickDate() async {
+    final now = DateTime.now();
+    // Scheduled transactions allowed up to 12 months ahead.
+    final lastDate = DateTime(now.year, now.month + 12, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _transactionDate,
+      // Clamp legacy out-of-range entries (e.g. 2035) so the picker doesn't crash.
+      initialDate: _transactionDate.isAfter(lastDate)
+          ? lastDate
+          : _transactionDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
+      lastDate: lastDate,
     );
     if (picked != null) setState(() => _transactionDate = picked);
   }
@@ -650,7 +721,9 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
     final amount = CurrencyInputFormatter.parse(_amountCtrl.text);
     final isEditing = widget.initialTransaction != null;
 
-    if (_type == TransactionType.expense && !isEditing) {
+    // The no-income warning only guards actual spending; a future-dated
+    // expense is a plan and that month's income may not be recorded yet.
+    if (_type == TransactionType.expense && !isEditing && !_isUpcoming) {
       final txList = ref.read(transactionsProvider).value ?? [];
       final budgetsList = ref.read(monthlyBudgetsProvider).value ?? [];
       final salaryHistory = ref.read(salaryHistoryProvider).value ?? [];

@@ -62,6 +62,15 @@ class TransactionModel {
       (categoryName?.toLowerCase().contains('utang') == true) ||
       (categoryName?.toLowerCase().contains('cicilan') == true);
 
+  /// True bila tanggal transaksi setelah hari ini (date-only comparison;
+  /// dinormalisasi sehingga tidak terpengaruh jam/menit/detik).
+  bool get isUpcoming {
+    final now = DateTime.now();
+    final txDate = DateTime(transactionDate.year, transactionDate.month, transactionDate.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return txDate.isAfter(today);
+  }
+
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     final cat = json['pf_categories'] as Map<String, dynamic>?;
     final note = json['note'] as String? ?? json['description'] as String?;

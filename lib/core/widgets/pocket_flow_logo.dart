@@ -25,32 +25,45 @@ class PocketFlowLogo extends StatelessWidget {
       children: [
         if (showIcon) ...[
           Container(
-            width: size * 1.5,
-            height: size * 1.5,
+            width: size * 1.4,
+            height: size * 1.4,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1D4ED8), // Deep Royal Blue
-                  Color(0xFF2563EB), // Primary Electric Blue
-                  Color(0xFF0EA5E9), // Cyan Accent
-                ],
-              ),
-              borderRadius: BorderRadius.circular(size * 0.42),
+              borderRadius: BorderRadius.circular(size * 0.35),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                  blurRadius: size * 0.45,
-                  offset: Offset(0, size * 0.12),
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                  blurRadius: size * 0.35,
+                  offset: Offset(0, size * 0.08),
                 ),
               ],
             ),
-            child: Center(
-              child: Icon(
-                Icons.account_balance_wallet_rounded,
-                color: Colors.white,
-                size: size * 0.85,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(size * 0.35),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: size * 1.4,
+                height: size * 1.4,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF1D4ED8),
+                        Color(0xFF2563EB),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(size * 0.35),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.account_balance_wallet_rounded,
+                      color: Colors.white,
+                      size: size * 0.8,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

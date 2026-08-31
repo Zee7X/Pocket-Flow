@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/images/new_logo.png" alt="PocketFlow Logo" width="180" />
+  <img src="assets/images/logo.png" alt="PocketFlow Logo" width="180" />
 
   # PocketFlow
   ### *Smart Salary-First Zero-Based Budgeting App*

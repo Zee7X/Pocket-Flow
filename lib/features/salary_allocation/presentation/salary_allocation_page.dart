@@ -312,11 +312,15 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
             InkWell(
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
               onTap: () async {
+                final now = DateTime.now();
+                final lastDate = DateTime(now.year, now.month + 12, now.day);
                 final picked = await showDatePicker(
                   context: context,
-                  initialDate: _selectedDate,
+                  // Clamp so out-of-range entry doesn't crash the picker.
+                  initialDate:
+                      _selectedDate.isAfter(lastDate) ? lastDate : _selectedDate,
                   firstDate: DateTime(2020),
-                  lastDate: DateTime(2030),
+                  lastDate: lastDate,
                 );
                 if (picked != null) {
                   setState(() => _selectedDate = picked);

@@ -26,6 +26,7 @@ final categoriesProvider =
 class CategoriesNotifier extends AsyncNotifier<List<Category>> {
   @override
   Future<List<Category>> build() async {
+    if (ref.watch(currentUserIdProvider) == null) return const [];
     return ref.watch(categoryRepositoryProvider).getCategories();
   }
 
@@ -125,6 +126,7 @@ final allocationRulesProvider =
 class AllocationRulesNotifier extends AsyncNotifier<List<AllocationRule>> {
   @override
   Future<List<AllocationRule>> build() async {
+    if (ref.watch(currentUserIdProvider) == null) return const [];
     return ref.watch(allocationRuleRepositoryProvider).getAllocationRules();
   }
 

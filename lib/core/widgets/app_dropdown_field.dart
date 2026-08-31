@@ -51,6 +51,7 @@ class AppDropdownFormField<T> extends StatelessWidget {
             final child = item.child;
             if (child is AppDropdownItemContent) {
               return Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (child.icon != null) ...[
                     Icon(
@@ -60,7 +61,7 @@ class AppDropdownFormField<T> extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Expanded(
+                  Flexible(
                     child: Text(
                       child.title,
                       style: GoogleFonts.dmSans(
@@ -71,27 +72,6 @@ class AppDropdownFormField<T> extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (child.badgeText != null && child.badgeText!.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (child.badgeColor ?? AppTheme.primary)
-                            .withValues(alpha: 0.12),
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusSmall),
-                      ),
-                      child: Text(
-                        child.badgeText!,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: child.badgeColor ?? AppTheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               );
             }
@@ -218,21 +198,21 @@ class AppDropdownItemContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 2,
                   children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13.5,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                          color: AppTheme.textDarkPrimary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: AppTheme.textDarkPrimary,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (badgeText != null && badgeText!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
+                    if (badgeText != null && badgeText!.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
@@ -251,7 +231,6 @@ class AppDropdownItemContent extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
                   ],
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[

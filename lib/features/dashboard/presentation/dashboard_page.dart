@@ -387,54 +387,74 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Safe Spending Hari Ini',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.82),
-                                fontWeight: FontWeight.w500,
+                            Flexible(
+                              flex: 2,
+                              child: Text(
+                                'Safe Spending Hari Ini',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            Text(
-                              summary.safeSpendingToday > 0
-                                  ? 'Sisa Hari Ini'
-                                  : (summary.variableSpentToday > 0 ? 'Hari Ini Habis' : 'Belum Diset'),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w700,
-                                color: summary.safeSpendingToday > 0
-                                    ? const Color(0xFF86EFAC)
-                                    : const Color(0xFFFDE047),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                summary.safeSpendingToday > 0
+                                    ? 'Sisa Hari Ini'
+                                    : (summary.variableSpentToday > 0 ? 'Hari Ini Habis' : 'Belum Diset'),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: summary.safeSpendingToday > 0
+                                      ? const Color(0xFF86EFAC)
+                                      : const Color(0xFFFDE047),
+                                ),
+                                textAlign: TextAlign.right,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 2),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              summary.safeSpendingToday > 0
-                                  ? summary.safeSpendingToday.toRupiah
-                                  : 'Rp0',
-                              style: AppTheme.monoCurrency(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                            Flexible(
+                              flex: 2,
+                              child: Text(
+                                summary.safeSpendingToday > 0
+                                    ? summary.safeSpendingToday.toRupiah
+                                    : 'Rp0',
+                                style: AppTheme.monoCurrency(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            Text(
-                              summary.safeSpendingToday > 0
-                                  ? 'Jatah ${summary.dailyQuotaToday.toRupiah}/hari'
-                                  : (summary.daysRemainingInMonth > 1
-                                      ? 'Mulai besok: ${summary.dailyQuotaTomorrow.toRupiah}/hr'
-                                      : 'Terpakai ${summary.variableSpentToday.toRupiah}'),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontWeight: FontWeight.w500,
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                summary.safeSpendingToday > 0
+                                    ? 'Jatah ${summary.dailyQuotaToday.toRupiah}/hari'
+                                    : (summary.daysRemainingInMonth > 1
+                                        ? 'Mulai besok: ${summary.dailyQuotaTomorrow.toRupiah}/hr'
+                                        : 'Terpakai ${summary.variableSpentToday.toRupiah}'),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.right,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -1225,12 +1245,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               const Icon(Icons.savings_rounded,
                                   size: 12, color: AppTheme.primary),
                               const SizedBox(width: 4),
-                              Text(
-                                'Tabungan & Simpanan Aset',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.primary,
+                              Flexible(
+                                child: Text(
+                                  'Tabungan & Simpanan Aset',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -1250,12 +1274,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               const Icon(Icons.credit_card_outlined,
                                   size: 12, color: AppTheme.warning),
                               const SizedBox(width: 4),
-                              Text(
-                                'Pos Cicilan & Utang',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.warning,
+                              Flexible(
+                                child: Text(
+                                  'Pos Cicilan & Utang',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.warning,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -1325,12 +1353,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       color: badgeText,
                                     ),
                                     const SizedBox(width: 5),
-                                    Text(
-                                      badgeLabel,
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: badgeText,
+                                    Flexible(
+                                      child: Text(
+                                        badgeLabel,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: badgeText,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     const SizedBox(width: 3),

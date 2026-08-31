@@ -39,6 +39,12 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
   late bool _isRequired;
   bool _isFixed = false;
 
+  static String _formatPercentage(double? pct) {
+    if (pct == null || pct <= 0) return '';
+    if (pct % 1 == 0) return pct.toInt().toString();
+    return pct.toString().replaceAll('.', ',');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -51,9 +57,7 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
             : '',
       );
       _pctCtrl = TextEditingController(
-        text: init.percentage != null && init.percentage! > 0
-            ? init.percentage!.toStringAsFixed(0)
-            : '',
+        text: _formatPercentage(init.percentage),
       );
       _priorityCtrl = TextEditingController(text: init.priority.toString());
       _selectedCategoryId = init.categoryId;
@@ -97,6 +101,9 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
 
     return AlertDialog(
       scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      actionsOverflowButtonSpacing: 8,
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
@@ -240,17 +247,18 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
               if (_selectedType == AllocationType.percentage) ...[
                 TextFormField(
                   controller: _pctCtrl,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   style: GoogleFonts.robotoMono(color: AppTheme.textDarkPrimary),
                   decoration: const InputDecoration(
                     labelText: 'Persentase (%)',
-                    hintText: 'misal: 20',
+                    hintText: 'misal: 2,5 atau 20',
                     suffixText: '%',
                   ),
                   validator: (v) {
-                    final val = double.tryParse(v ?? '');
+                    final normalized = (v ?? '').trim().replaceAll(',', '.');
+                    final val = double.tryParse(normalized);
                     if (val == null || val <= 0 || val > 100) {
-                      return 'Persentase 1 - 100%';
+                      return 'Persentase 0,1 - 100%';
                     }
                     return null;
                   },
@@ -410,7 +418,8 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
     if (_selectedCategoryId == null) return;
 
     final fixedAmount = CurrencyInputFormatter.parse(_amountCtrl.text);
-    final percentage = double.tryParse(_pctCtrl.text);
+    final pctText = _pctCtrl.text.trim().replaceAll(',', '.');
+    final percentage = double.tryParse(pctText);
     final priority = int.tryParse(_priorityCtrl.text) ?? 1;
     final isEditing = widget.initialRule != null;
     final ruleName = _nameCtrl.text.trim();
