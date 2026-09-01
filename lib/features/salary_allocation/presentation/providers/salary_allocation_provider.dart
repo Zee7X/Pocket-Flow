@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
+import '../../../categories_rules/presentation/providers/categories_rules_provider.dart';
 import '../../data/salary_repository.dart';
 import '../../domain/monthly_budget.dart';
 import '../../domain/salary_allocation_result.dart';
@@ -102,5 +103,47 @@ class SalaryAllocationActionNotifier
       state = AsyncValue.error(e, st);
       return null;
     }
+  }
+
+  /// Update single category budget and optionally update master rule
+  Future<void> updateCategoryBudget({
+    required String categoryId,
+    required int periodMonth,
+    required int periodYear,
+    required int newAllocatedAmount,
+    bool updateMasterRule = false,
+  }) async {
+    await _repository.updateCategoryBudget(
+      categoryId: categoryId,
+      periodMonth: periodMonth,
+      periodYear: periodYear,
+      newAllocatedAmount: newAllocatedAmount,
+    );
+
+    if (updateMasterRule) {
+      try {
+        final rules = await _ref.read(allocationRuleRepositoryProvider).getAllocationRules();
+        final matchRule = rules.where((r) => r.categoryId == categoryId).firstOrNull;
+        if (matchRule != null) {
+          await _ref.read(allocationRuleRepositoryProvider).updateAllocationRule(
+                id: matchRule.id,
+                categoryId: matchRule.categoryId,
+                name: matchRule.name,
+                allocationType: matchRule.allocationType,
+                fixedAmount: newAllocatedAmount,
+                percentage: matchRule.percentage,
+                percentageBase: matchRule.percentageBase,
+                minAmount: matchRule.minAmount,
+                maxAmount: matchRule.maxAmount,
+                priority: matchRule.priority,
+                isRequired: matchRule.isRequired,
+              );
+          _ref.invalidate(allocationRulesProvider);
+        }
+      } catch (_) {}
+    }
+
+    _ref.invalidate(monthlyBudgetsProvider);
+    _ref.invalidate(salaryHistoryProvider);
   }
 }

@@ -306,7 +306,9 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
   Widget _buildAnalyticDonutCard(MonthlyReport report) {
     final activeCategories =
         report.categoryBreakdown.where((c) => c.spentAmount > 0).toList();
-    final hasSpending = activeCategories.isNotEmpty && report.totalExpense > 0;
+    final totalActiveSpent =
+        activeCategories.fold<int>(0, (sum, c) => sum + c.spentAmount);
+    final hasSpending = activeCategories.isNotEmpty && totalActiveSpent > 0;
 
     return CloudPulseCard(
       padding: const EdgeInsets.all(20),
@@ -374,7 +376,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        report.totalExpense.toRupiahCompact,
+                        totalActiveSpent.toRupiahCompact,
                         style: AppTheme.monoCurrency(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -410,8 +412,8 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
               itemBuilder: (ctx, i) {
                 final cat = activeCategories[i];
                 final color = _chartPalette[i % _chartPalette.length];
-                final sharePct = report.totalExpense > 0
-                    ? ((cat.spentAmount / report.totalExpense) * 100).toStringAsFixed(1)
+                final sharePct = totalActiveSpent > 0
+                    ? ((cat.spentAmount / totalActiveSpent) * 100).toStringAsFixed(1)
                     : '0';
 
                 return Container(
@@ -527,8 +529,10 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                   : (cat.spentAmount > 0 ? 1.0 : 0.0);
               final pct = (ratio * 100).toStringAsFixed(0);
               final isOver = cat.isOverBudget;
-              final sharePct = report.totalExpense > 0 && cat.spentAmount > 0
-                  ? ' • ${((cat.spentAmount / report.totalExpense) * 100).toStringAsFixed(1)}% total'
+              final totalSpentAll =
+                  categories.fold<int>(0, (sum, c) => sum + c.spentAmount);
+              final sharePct = totalSpentAll > 0 && cat.spentAmount > 0
+                  ? ' • ${((cat.spentAmount / totalSpentAll) * 100).toStringAsFixed(1)}% total'
                   : '';
 
               return CloudPulseCard(

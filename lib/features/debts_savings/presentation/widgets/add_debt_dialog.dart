@@ -1,6 +1,5 @@
 // lib/features/debts_savings/presentation/widgets/add_debt_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -104,7 +103,6 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
                 controller: _totalAmountCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
                 style: AppTheme.monoCurrency(fontSize: 16),
@@ -122,7 +120,6 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
                 controller: _remainingCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
                 style: AppTheme.monoCurrency(fontSize: 16),
@@ -150,7 +147,6 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
                 controller: _minPaymentCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
                 style: AppTheme.monoCurrency(fontSize: 15),

@@ -1,6 +1,5 @@
 // lib/features/debts_savings/presentation/widgets/record_savings_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -113,7 +112,6 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
                 controller: _amountCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
                 style: AppTheme.monoCurrency(fontSize: 16),

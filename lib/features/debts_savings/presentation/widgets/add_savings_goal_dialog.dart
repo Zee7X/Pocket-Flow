@@ -1,6 +1,5 @@
 // lib/features/debts_savings/presentation/widgets/add_savings_goal_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -100,7 +99,6 @@ class _AddSavingsGoalDialogState extends ConsumerState<AddSavingsGoalDialog> {
                 controller: _targetAmountCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
                 style: AppTheme.monoCurrency(fontSize: 16),
@@ -118,7 +116,6 @@ class _AddSavingsGoalDialogState extends ConsumerState<AddSavingsGoalDialog> {
                 controller: _currentAmountCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
                   CurrencyInputFormatter(),
                 ],
                 style: AppTheme.monoCurrency(fontSize: 16),

@@ -67,4 +67,23 @@ class SalaryRepository {
         .order('period_month', ascending: false);
     return (res as List).map((json) => SalaryEntry.fromJson(json)).toList();
   }
+
+  /// Update single category budget allocation for a specific period
+  Future<void> updateCategoryBudget({
+    required String categoryId,
+    required int periodMonth,
+    required int periodYear,
+    required int newAllocatedAmount,
+  }) async {
+    await _client
+        .from('pf_monthly_budgets')
+        .update({
+          'allocated_amount': newAllocatedAmount,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('user_id', _userId)
+        .eq('category_id', categoryId)
+        .eq('period_month', periodMonth)
+        .eq('period_year', periodYear);
+  }
 }

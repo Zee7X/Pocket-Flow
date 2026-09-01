@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -36,6 +35,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
   DateTime _selectedDate = DateTime.now();
   late int _selectedMonth;
   late int _selectedYear;
+  bool _userHasTyped = false;
 
   @override
   void initState() {
@@ -51,6 +51,23 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
     super.dispose();
   }
 
+  void _onPeriodChanged({int? month, int? year}) {
+    setState(() {
+      if (month != null) _selectedMonth = month;
+      if (year != null) _selectedYear = year;
+
+      final historyList = ref.read(salaryHistoryProvider).value ?? [];
+      final match = historyList.where(
+        (e) => e.periodMonth == _selectedMonth && e.periodYear == _selectedYear,
+      ).firstOrNull;
+
+      if (match != null) {
+        _salaryCtrl.text = CurrencyInputFormatter.format(match.amount);
+        _selectedDate = match.salaryDate;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(salaryHistoryProvider);
@@ -58,6 +75,16 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
     final rulesAsync = ref.watch(allocationRulesProvider);
     final rulesCount = rulesAsync.value?.length ?? 0;
     final isLoading = actionState.isLoading;
+
+    final historyList = historyAsync.value ?? [];
+    final existingEntry = historyList.where(
+      (e) => e.periodMonth == _selectedMonth && e.periodYear == _selectedYear,
+    ).firstOrNull;
+
+    if (_salaryCtrl.text.isEmpty && !_userHasTyped && existingEntry != null) {
+      _salaryCtrl.text = CurrencyInputFormatter.format(existingEntry.amount);
+      _selectedDate = existingEntry.salaryDate;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -92,7 +119,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Input Gaji Hero Card ───────────────────────────────────
-                _buildSalaryInputCard(isLoading),
+                _buildSalaryInputCard(isLoading, existingEntry),
 
                 const SizedBox(height: 16),
 
@@ -182,7 +209,9 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
     );
   }
 
-  Widget _buildSalaryInputCard(bool isLoading) {
+  Widget _buildSalaryInputCard(bool isLoading, SalaryEntry? existingEntry) {
+    final hasExisting = existingEntry != null;
+
     return CloudPulseCard(
       padding: const EdgeInsets.all(22),
       child: Form(
@@ -232,17 +261,63 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
             ),
             const SizedBox(height: 20),
 
+            // Smart Allocated Status Banner
+            if (hasExisting) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.pastelGreen.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                  border: Border.all(color: AppTheme.success.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: AppTheme.success, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Periode ini sudah dialokasikan (${existingEntry.amount.toRupiah})',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textDarkPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Anda dapat melakukan alokasi ulang untuk memperbarui budget bulan ini.',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11.5,
+                              color: AppTheme.textDarkSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Salary Amount Input
             TextFormField(
               controller: _salaryCtrl,
               keyboardType: TextInputType.number,
               inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
                 CurrencyInputFormatter(),
               ],
               style: AppTheme.monoCurrency(fontSize: 18),
-              decoration: const InputDecoration(
-                labelText: 'Nominal Gaji Bersih (Take Home Pay)',
+              onChanged: (_) {
+                _userHasTyped = true;
+              },
+              decoration: InputDecoration(
+                labelText: hasExisting
+                    ? 'Nominal Gaji Bersih (Teralokasi: ${existingEntry.amount.toRupiah})'
+                    : 'Nominal Gaji Bersih (Take Home Pay)',
                 hintText: 'misal: 8.500.000',
                 prefixText: 'Rp ',
               ),
@@ -280,7 +355,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                         ),
                       );
                     }).toList(),
-                    onChanged: (v) => setState(() => _selectedMonth = v!),
+                    onChanged: (v) => _onPeriodChanged(month: v),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -301,7 +376,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                         ),
                       );
                     }).toList(),
-                    onChanged: (v) => setState(() => _selectedYear = v!),
+                    onChanged: (v) => _onPeriodChanged(year: v),
                   ),
                 ),
               ],
@@ -357,11 +432,18 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.calculate_rounded, size: 18),
+                          Icon(
+                            hasExisting
+                                ? Icons.sync_rounded
+                                : Icons.calculate_rounded,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              'Preview Alokasi Otomatis',
+                              hasExisting
+                                  ? 'Alokasikan Ulang Periode Ini'
+                                  : 'Preview Alokasi Otomatis',
                               style: GoogleFonts.dmSans(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,

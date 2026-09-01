@@ -16,10 +16,37 @@ class CurrencyInputFormatter extends TextInputFormatter {
       return newValue.copyWith(text: '');
     }
 
-    // Keep only digits
-    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    String newText = newValue.text;
+    int selectionEnd = newValue.selection.end;
+
+    // Handle user pressing backspace directly on a thousand separator dot '.'
+    // e.g. "290.000" with cursor at 4 (after dot) -> delete the digit before the dot
+    if (oldValue.text.length - newValue.text.length == 1 &&
+        oldValue.selection.isCollapsed &&
+        oldValue.selection.baseOffset > 0 &&
+        oldValue.selection.baseOffset <= oldValue.text.length &&
+        oldValue.text[oldValue.selection.baseOffset - 1] == '.') {
+      final dotPos = oldValue.selection.baseOffset - 1;
+      if (dotPos > 0) {
+        // Remove the digit before the dot
+        newText = oldValue.text.substring(0, dotPos - 1) +
+            oldValue.text.substring(dotPos);
+        selectionEnd = dotPos - 1;
+      }
+    }
+
+    // Calculate how many digits were before the cursor in the modified text
+    final validEnd = selectionEnd.clamp(0, newText.length);
+    final digitsBeforeCursor =
+        newText.substring(0, validEnd).replaceAll(RegExp(r'[^\d]'), '').length;
+
+    // Extract all digits
+    final digitsOnly = newText.replaceAll(RegExp(r'[^\d]'), '');
     if (digitsOnly.isEmpty) {
-      return newValue.copyWith(text: '');
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
     }
 
     // Parse to int
@@ -30,9 +57,26 @@ class CurrencyInputFormatter extends TextInputFormatter {
 
     final formatted = _formatter.format(number);
 
-    // Calculate cursor position from the end so backspace and inserts feel natural
-    final selectionIndex = formatted.length - (newValue.text.length - newValue.selection.end);
-    final safeSelectionIndex = selectionIndex.clamp(0, formatted.length);
+    // Find cursor position in formatted string corresponding to digitsBeforeCursor
+    int newCursorPos = 0;
+    int digitCount = 0;
+
+    for (int i = 0; i < formatted.length; i++) {
+      if (RegExp(r'\d').hasMatch(formatted[i])) {
+        digitCount++;
+      }
+      if (digitCount <= digitsBeforeCursor) {
+        newCursorPos = i + 1;
+      } else {
+        break;
+      }
+    }
+
+    if (digitsBeforeCursor == 0) {
+      newCursorPos = 0;
+    }
+
+    final safeSelectionIndex = newCursorPos.clamp(0, formatted.length);
 
     return TextEditingValue(
       text: formatted,

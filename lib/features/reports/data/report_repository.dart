@@ -94,7 +94,9 @@ class ReportRepository {
     for (final d in (debtPaymentRes as List)) {
       goalDebtPayment += (d['amount'] as num).toInt();
     }
-    final totalDebtPayment = transactionDebt + goalDebtPayment;
+    // Prevent double counting between linked transactions and debt payments table
+    final totalDebtPayment =
+        transactionDebt >= goalDebtPayment ? transactionDebt : goalDebtPayment;
 
     // 5. Fetch Savings Deposits from pf_savings_transactions
     final savingsRes = await _client
@@ -111,18 +113,24 @@ class ReportRepository {
         goalSavings += amount;
       }
     }
-    final totalSavings = transactionSavings + goalSavings;
+    // Prevent double counting between linked transactions and savings table
+    final totalSavings =
+        transactionSavings >= goalSavings ? transactionSavings : goalSavings;
 
     // 6. Calculate Net Cash Flow & Savings Rate
     final netCashFlow = totalIncome - totalExpense - totalDebtPayment - totalSavings;
     final savingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0.0;
+
+    // Total actual spending across all categories (expenses + debt + savings)
+    final totalAllSpent = totalExpense + totalDebtPayment + totalSavings;
+    final denominator = totalAllSpent > 0 ? totalAllSpent : (totalExpense > 0 ? totalExpense : 1);
 
     // 7. Build Category Breakdown
     final List<CategorySpendingSummary> breakdown = [];
     for (final b in budgets) {
       final name = b.categoryName ?? 'Kategori';
       final spent = b.spentAmount;
-      final pct = totalExpense > 0 ? (spent / totalExpense) : 0.0;
+      final pct = (spent / denominator).clamp(0.0, 1.0);
       breakdown.add(
         CategorySpendingSummary(
           categoryName: name,
@@ -136,7 +144,7 @@ class ReportRepository {
 
     // Add any non-budgeted expenses
     spentPerCategory.forEach((name, spent) {
-      final pct = totalExpense > 0 ? (spent / totalExpense) : 0.0;
+      final pct = (spent / denominator).clamp(0.0, 1.0);
       breakdown.add(
         CategorySpendingSummary(
           categoryName: name,

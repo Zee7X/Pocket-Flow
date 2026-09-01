@@ -223,7 +223,6 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
                   controller: _amountCtrl,
                   keyboardType: TextInputType.number,
                   inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
                     CurrencyInputFormatter(),
                   ],
                   style: AppTheme.monoCurrency(fontSize: 16),

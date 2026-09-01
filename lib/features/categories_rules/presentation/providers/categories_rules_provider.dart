@@ -6,6 +6,7 @@ import '../../data/allocation_rule_repository.dart';
 import '../../domain/category.dart';
 import '../../domain/allocation_rule.dart';
 import '../../domain/category_template.dart';
+import '../../../salary_allocation/presentation/providers/salary_allocation_provider.dart';
 
 // ─── Repositories ────────────────────────────────────────────────────────────
 final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
@@ -188,6 +189,20 @@ class AllocationRulesNotifier extends AsyncNotifier<List<AllocationRule>> {
     final freshRules =
         await ref.read(allocationRuleRepositoryProvider).getAllocationRules();
     state = AsyncValue.data(freshRules);
+
+    // Auto-sync to active monthly budget for current period so dashboard reflects instantly
+    if (allocationType == AllocationType.fixed || allocationType == AllocationType.capped) {
+      try {
+        final period = ref.read(selectedPeriodProvider);
+        await ref.read(salaryRepositoryProvider).updateCategoryBudget(
+              categoryId: categoryId,
+              periodMonth: period.month,
+              periodYear: period.year,
+              newAllocatedAmount: fixedAmount,
+            );
+        ref.invalidate(monthlyBudgetsProvider);
+      } catch (_) {}
+    }
   }
 
   Future<void> toggleActive(String ruleId, bool isActive) async {

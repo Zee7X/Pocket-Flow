@@ -27,12 +27,17 @@ class AllocationPreviewSheet extends StatelessWidget {
           w.shortfall != null ? ' (kurang ${w.shortfall!.toRupiah})' : '';
       return 'Gaji tidak cukup untuk pos wajib: ${w.ruleName ?? ""}$shortfallText';
     }
+    if (w.isUnallocatedRemainder) {
+      final amount = w.amount ?? result.remaining;
+      return 'Terdapat sisa gaji sebesar ${amount.toRupiah} yang belum dialokasikan ke aturan manapun.';
+    }
     return w.message;
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasDeficit = result.warnings.isNotEmpty;
+    final hasDeficit = result.hasDeficit;
+    final deficitWarnings = result.deficitWarnings;
     final allocatedPct = result.salaryAmount > 0
         ? ((result.totalAllocated / result.salaryAmount) * 100).clamp(0, 100)
         : 0.0;
@@ -158,7 +163,7 @@ class AllocationPreviewSheet extends StatelessWidget {
                       color: AppTheme.borderLight,
                     ),
                     const SizedBox(width: 12),
-                    // Remaining
+                    // Remaining / Surplus / Deficit
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,22 +215,32 @@ class AllocationPreviewSheet extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${allocatedPct.toStringAsFixed(0)}% Terencana',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        color: AppTheme.textDarkMuted,
+                    Flexible(
+                      child: Text(
+                        '${allocatedPct.toStringAsFixed(0)}% Terencana',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          color: AppTheme.textDarkMuted,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      hasDeficit
-                          ? 'Perlu Penyesuaian'
-                          : '${(100 - allocatedPct).toStringAsFixed(0)}% Sisa Bebas',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        color: hasDeficit ? AppTheme.danger : AppTheme.textDarkMuted,
-                        fontWeight:
-                            hasDeficit ? FontWeight.w600 : FontWeight.normal,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        hasDeficit
+                            ? 'Perlu Penyesuaian'
+                            : (result.remaining == 0
+                                ? '100% Teralokasi Penuh'
+                                : '${(100 - allocatedPct).toStringAsFixed(0)}% Sisa Bebas'),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          color: hasDeficit ? AppTheme.danger : AppTheme.textDarkMuted,
+                          fontWeight:
+                              hasDeficit ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        textAlign: TextAlign.end,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -235,8 +250,8 @@ class AllocationPreviewSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Warnings / Deficit Banner
-          if (result.warnings.isNotEmpty) ...[
+          // Deficit Banner (when required rules cannot be fulfilled)
+          if (hasDeficit && deficitWarnings.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -252,18 +267,21 @@ class AllocationPreviewSheet extends StatelessWidget {
                       const Icon(Icons.error_outline_rounded,
                           size: 16, color: AppTheme.danger),
                       const SizedBox(width: 6),
-                      Text(
-                        'Peringatan Defisit Kebutuhan Wajib',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.danger,
+                      Expanded(
+                        child: Text(
+                          'Peringatan Defisit Kebutuhan Wajib',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.danger,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  ...result.warnings.map((w) {
+                  ...deficitWarnings.map((w) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
@@ -283,6 +301,49 @@ class AllocationPreviewSheet extends StatelessWidget {
                       fontSize: 10,
                       color: const Color(0xFFB91C1C),
                       fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ] else if (!hasDeficit && result.remaining > 0) ...[
+            // Info Banner for Unallocated Surplus Remaining
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.pastelBlue.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded,
+                          size: 16, color: AppTheme.primary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Sisa Gaji Bebas: ${result.remaining.toRupiah}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Terdapat sisa gaji sebesar ${result.remaining.toRupiah} yang belum dialokasikan ke aturan manapun. Sisa ini otomatis menjadi saldo kas bebas / fleksibel Anda bulan ini.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: AppTheme.textDarkSecondary,
+                      height: 1.3,
                     ),
                   ),
                 ],
@@ -317,28 +378,33 @@ class AllocationPreviewSheet extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            alloc.ruleName,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isZero
-                                  ? AppTheme.danger
-                                  : AppTheme.textDarkPrimary,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              alloc.ruleName,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isZero
+                                    ? AppTheme.danger
+                                    : AppTheme.textDarkPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          Text(
-                            alloc.allocationType.toUpperCase(),
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              color: AppTheme.textDarkMuted,
+                            Text(
+                              alloc.allocationType.toUpperCase(),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                color: AppTheme.textDarkMuted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 10),
                       Text(
                         alloc.allocatedAmount.toRupiah,
                         style: AppTheme.monoCurrency(

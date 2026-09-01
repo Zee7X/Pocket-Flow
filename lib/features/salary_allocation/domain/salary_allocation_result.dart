@@ -36,12 +36,14 @@ class AllocationWarning {
   final String message;
   final String? ruleName;
   final int? shortfall;
+  final int? amount;
 
   const AllocationWarning({
     required this.code,
     required this.message,
     this.ruleName,
     this.shortfall,
+    this.amount,
   });
 
   factory AllocationWarning.fromJson(Map<String, dynamic> json) {
@@ -50,8 +52,21 @@ class AllocationWarning {
       message: json['message'] as String? ?? '',
       ruleName: (json['rule_name'] ?? json['category_name']) as String?,
       shortfall: (json['shortfall'] as num?)?.toInt(),
+      amount: (json['amount'] as num?)?.toInt(),
     );
   }
+
+  bool get isDeficit =>
+      code == 'INSUFFICIENT_FUNDS' ||
+      code == 'SHORTFALL' ||
+      code == 'DEFICIT' ||
+      code == 'OVER_ALLOCATED' ||
+      (shortfall != null && shortfall! > 0);
+
+  bool get isUnallocatedRemainder =>
+      code == 'UNALLOCATED_REMAINDER' ||
+      message.toLowerCase().contains('sisa gaji') ||
+      message.toLowerCase().contains('unallocated');
 }
 
 class SalaryAllocationResult {
@@ -80,6 +95,15 @@ class SalaryAllocationResult {
     required this.allocations,
     required this.warnings,
   });
+
+  bool get hasDeficit =>
+      warnings.any((w) => w.isDeficit) || remaining < 0;
+
+  List<AllocationWarning> get deficitWarnings =>
+      warnings.where((w) => w.isDeficit).toList();
+
+  List<AllocationWarning> get infoWarnings =>
+      warnings.where((w) => !w.isDeficit).toList();
 
   factory SalaryAllocationResult.fromJson(Map<String, dynamic> json) {
     final rawAllocations = json['allocations'];

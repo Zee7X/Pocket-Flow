@@ -6,11 +6,12 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/extensions/currency_extension.dart';
+import '../../../../core/formatters/currency_input_formatter.dart';
 import '../../domain/monthly_budget.dart';
 import '../../domain/salary_entry.dart';
 import '../providers/salary_allocation_provider.dart';
 
-class SalaryHistoryDetailSheet extends ConsumerWidget {
+class SalaryHistoryDetailSheet extends ConsumerStatefulWidget {
   final SalaryEntry entry;
   final VoidCallback onEditForm;
 
@@ -40,7 +41,35 @@ class SalaryHistoryDetailSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SalaryHistoryDetailSheet> createState() =>
+      _SalaryHistoryDetailSheetState();
+}
+
+class _SalaryHistoryDetailSheetState
+    extends ConsumerState<SalaryHistoryDetailSheet> {
+  int _refreshKey = 0;
+
+  void _triggerRefresh() {
+    setState(() {
+      _refreshKey++;
+    });
+  }
+
+  void _openEditCategoryDialog(MonthlyBudget budget) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => _EditCategoryBudgetDialog(
+        budget: budget,
+        periodMonth: widget.entry.periodMonth,
+        periodYear: widget.entry.periodYear,
+        onSaved: _triggerRefresh,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = widget.entry;
     final periodStr = DateFormat('MMMM yyyy')
         .format(DateTime(entry.periodYear, entry.periodMonth));
     final salaryRepo = ref.watch(salaryRepositoryProvider);
@@ -152,6 +181,7 @@ class SalaryHistoryDetailSheet extends ConsumerWidget {
           // Budgets List for this period
           Expanded(
             child: FutureBuilder<List<MonthlyBudget>>(
+              key: ValueKey(_refreshKey),
               future: salaryRepo.getMonthlyBudgets(
                 periodMonth: entry.periodMonth,
                 periodYear: entry.periodYear,
@@ -282,13 +312,26 @@ class SalaryHistoryDetailSheet extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    Text(
-                      'Rincian Pos Budget (${budgets.length} Kategori):',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textDarkSecondary,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Rincian Pos Budget (${budgets.length} Kategori):',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textDarkSecondary,
+                          ),
+                        ),
+                        Text(
+                          'Klik untuk ubah',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
 
@@ -301,83 +344,119 @@ class SalaryHistoryDetailSheet extends ConsumerWidget {
                           : 0.0;
                       final isOver = b.spentAmount > b.allocatedAmount;
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _openEditCategoryDialog(b),
                           borderRadius:
                               BorderRadius.circular(AppTheme.radiusMedium),
-                          border: Border.all(color: AppTheme.borderLight),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusMedium),
+                              border: Border.all(
+                                color: isOver
+                                    ? AppTheme.danger.withValues(alpha: 0.4)
+                                    : AppTheme.borderLight,
+                              ),
+                            ),
+                            child: Column(
                               children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: catColor.withValues(alpha: 0.12),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    _parseIcon(catIcon),
-                                    size: 16,
-                                    color: catColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    catName,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      color: AppTheme.textDarkPrimary,
-                                    ),
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                Row(
                                   children: [
-                                    Text(
-                                      b.allocatedAmount.toRupiah,
-                                      style: AppTheme.monoCurrency(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppTheme.textDarkPrimary,
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: catColor.withValues(alpha: 0.12),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        _parseIcon(catIcon),
+                                        size: 16,
+                                        color: catColor,
                                       ),
                                     ),
-                                    Text(
-                                      'Terpakai: ${b.spentAmount.toRupiah}',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 10,
-                                        color: isOver
-                                            ? AppTheme.danger
-                                            : AppTheme.textDarkMuted,
-                                        fontWeight: isOver
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            catName,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                              color: AppTheme.textDarkPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.edit_outlined,
+                                                  size: 11,
+                                                  color: AppTheme.textDarkMuted),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                'Ubah Budget',
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 10,
+                                                  color: AppTheme.primary,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          b.allocatedAmount.toRupiah,
+                                          style: AppTheme.monoCurrency(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppTheme.textDarkPrimary,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Terpakai: ${b.spentAmount.toRupiah}',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10,
+                                            color: isOver
+                                                ? AppTheme.danger
+                                                : AppTheme.textDarkMuted,
+                                            fontWeight: isOver
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: LinearProgressIndicator(
+                                    value: pct,
+                                    minHeight: 4,
+                                    backgroundColor: AppTheme.borderLight,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      isOver ? AppTheme.danger : catColor,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: pct,
-                                minHeight: 4,
-                                backgroundColor: AppTheme.borderLight,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  isOver ? AppTheme.danger : catColor,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       );
                     }),
@@ -392,7 +471,7 @@ class SalaryHistoryDetailSheet extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(context);
-              onEditForm();
+              widget.onEditForm();
             },
             icon: const Icon(Icons.edit_note_rounded, size: 18),
             label: const Text('Edit / Gunakan Periode Ini di Form'),
@@ -445,3 +524,245 @@ class SalaryHistoryDetailSheet extends ConsumerWidget {
     }
   }
 }
+
+class _EditCategoryBudgetDialog extends ConsumerStatefulWidget {
+  final MonthlyBudget budget;
+  final int periodMonth;
+  final int periodYear;
+  final VoidCallback onSaved;
+
+  const _EditCategoryBudgetDialog({
+    required this.budget,
+    required this.periodMonth,
+    required this.periodYear,
+    required this.onSaved,
+  });
+
+  @override
+  ConsumerState<_EditCategoryBudgetDialog> createState() =>
+      _EditCategoryBudgetDialogState();
+}
+
+class _EditCategoryBudgetDialogState
+    extends ConsumerState<_EditCategoryBudgetDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _amountCtrl;
+  bool _updateMasterRule = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl = TextEditingController(
+      text: CurrencyInputFormatter.format(widget.budget.allocatedAmount),
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final newAmount = CurrencyInputFormatter.parse(_amountCtrl.text);
+
+    setState(() => _isSaving = true);
+    try {
+      await ref
+          .read(salaryAllocationActionProvider.notifier)
+          .updateCategoryBudget(
+            categoryId: widget.budget.categoryId,
+            periodMonth: widget.periodMonth,
+            periodYear: widget.periodYear,
+            newAllocatedAmount: newAmount,
+            updateMasterRule: _updateMasterRule,
+          );
+
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSaved();
+        AppTheme.showSuccessSnackBar(
+          context,
+          'Budget ${widget.budget.categoryName ?? "Kategori"} berhasil diubah menjadi ${newAmount.toRupiah}!',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        AppTheme.showErrorSnackBar(
+          context,
+          'Gagal mengubah budget: $e',
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final catName = widget.budget.categoryName ?? 'Kategori';
+    final periodStr = DateFormat('MMMM yyyy')
+        .format(DateTime(widget.periodYear, widget.periodMonth));
+
+    return AlertDialog(
+      backgroundColor: AppTheme.surfaceLight,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+      ),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.edit_note_rounded,
+                color: AppTheme.primary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Ubah Budget',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textDarkPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceLightAlt,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                  border: Border.all(color: AppTheme.borderLightSubtle),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      catName,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppTheme.textDarkPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Periode: $periodStr',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppTheme.textDarkSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Terpakai Saat Ini:',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: AppTheme.textDarkMuted,
+                          ),
+                        ),
+                        Text(
+                          widget.budget.spentAmount.toRupiah,
+                          style: AppTheme.monoCurrency(
+                            fontSize: 11.5,
+                            color: widget.budget.spentAmount >
+                                    widget.budget.allocatedAmount
+                                ? AppTheme.danger
+                                : AppTheme.textDarkPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _amountCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [CurrencyInputFormatter()],
+                style: AppTheme.monoCurrency(fontSize: 16),
+                decoration: const InputDecoration(
+                  labelText: 'Nominal Budget Baru (Rp)',
+                  hintText: 'misal: 250.000',
+                  prefixText: 'Rp ',
+                ),
+                validator: (v) {
+                  final val = CurrencyInputFormatter.parse(v);
+                  if (val < 0) return 'Nominal tidak boleh negatif';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () =>
+                    setState(() => _updateMasterRule = !_updateMasterRule),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: _updateMasterRule,
+                        activeColor: AppTheme.primary,
+                        onChanged: (val) =>
+                            setState(() => _updateMasterRule = val ?? true),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Perbarui juga di Aturan Master Alokasi (untuk bulan-bulan berikutnya)',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: AppTheme.textDarkSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        ElevatedButton(
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Simpan Budget'),
+        ),
+      ],
+    );
+  }
+}
+

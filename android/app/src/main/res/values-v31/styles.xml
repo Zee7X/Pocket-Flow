@@ -3,7 +3,7 @@
     <!-- Android 12+ (API 31+) Splash Screen Theme -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowSplashScreenBackground">#F8FAFC</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
     </style>
 </resources>
 

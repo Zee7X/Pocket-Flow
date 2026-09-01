@@ -750,27 +750,27 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('18. AllocationPreviewSheet renders breakdown & warnings without overflow', (tester) async {
-      tester.view.physicalSize = const Size(360, 640);
+    testWidgets('18. AllocationPreviewSheet renders unallocated surplus remaining correctly without deficit warning', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
       final result = SalaryAllocationResult(
         success: true,
-        salaryAmount: 5500000,
-        totalAllocated: 5500000,
+        salaryAmount: 7600000,
+        totalAllocated: 5981200,
         periodMonth: 9,
         periodYear: 2026,
-        remaining: 0,
-        allocations: [
-          const RuleAllocationItem(
+        remaining: 1618800,
+        allocations: const [
+          RuleAllocationItem(
             ruleId: 'r1',
-            ruleName: 'Zakat (2,5%)',
+            ruleName: 'Cicilan / Utang',
             categoryId: 'c1',
-            allocationType: 'percentage',
-            allocatedAmount: 137500,
+            allocationType: 'fixed',
+            allocatedAmount: 2000000,
           ),
-          const RuleAllocationItem(
+          RuleAllocationItem(
             ruleId: 'r2',
             ruleName: 'Makan',
             categoryId: 'c2',
@@ -778,7 +778,13 @@ void main() {
             allocatedAmount: 1000000,
           ),
         ],
-        warnings: [],
+        warnings: const [
+          AllocationWarning(
+            code: 'UNALLOCATED_REMAINDER',
+            message: 'Terdapat sisa gaji sebesar 1618800 yang belum teralokasi ke aturan manapun.',
+            amount: 1618800,
+          ),
+        ],
       );
 
       await tester.pumpWidget(createTestApp(
@@ -788,13 +794,70 @@ void main() {
             onConfirm: () {},
           ),
         ),
-        screenSize: const Size(360, 640),
+        screenSize: const Size(390, 844),
       ));
       await tester.pumpAndSettle();
 
       expect(find.text('Hasil Preview Alokasi'), findsOneWidget);
-      expect(find.text('Zakat (2,5%)'), findsOneWidget);
-      expect(find.text('Makan'), findsOneWidget);
+      expect(find.text('Sisa Uang Bebas'), findsOneWidget);
+      expect(find.text('Rp1.618.800'), findsWidgets);
+      expect(find.text('79% Terencana'), findsOneWidget);
+      expect(find.text('21% Sisa Bebas'), findsOneWidget);
+      expect(find.text('Sisa Gaji Bebas: Rp1.618.800'), findsOneWidget);
+      expect(find.text('Uang Kurang'), findsNothing);
+      expect(find.text('Peringatan Defisit Kebutuhan Wajib'), findsNothing);
+      expect(find.text('Terapkan & Buat Budget Bulanan'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('18B. AllocationPreviewSheet renders actual deficit when required rule has shortfall', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final result = SalaryAllocationResult(
+        success: true,
+        salaryAmount: 3000000,
+        totalAllocated: 3000000,
+        periodMonth: 9,
+        periodYear: 2026,
+        remaining: 0,
+        allocations: const [
+          RuleAllocationItem(
+            ruleId: 'r1',
+            ruleName: 'Cicilan Wajib',
+            categoryId: 'c1',
+            allocationType: 'fixed',
+            allocatedAmount: 1500000,
+          ),
+        ],
+        warnings: const [
+          AllocationWarning(
+            code: 'SHORTFALL',
+            ruleName: 'Cicilan Wajib',
+            shortfall: 500000,
+            message: 'Gaji tidak cukup untuk pos wajib: Cicilan Wajib',
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createTestApp(
+        Scaffold(
+          body: AllocationPreviewSheet(
+            result: result,
+            onConfirm: () {},
+          ),
+        ),
+        screenSize: const Size(390, 844),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hasil Preview Alokasi'), findsOneWidget);
+      expect(find.text('Defisit / Status'), findsOneWidget);
+      expect(find.text('Uang Kurang'), findsOneWidget);
+      expect(find.text('Perlu Penyesuaian'), findsOneWidget);
+      expect(find.text('Peringatan Defisit Kebutuhan Wajib'), findsOneWidget);
+      expect(find.text('Tetap Kunci & Terapkan Budget'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

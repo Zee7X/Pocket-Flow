@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
+import '../../../core/widgets/app_dropdown_field.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
@@ -158,15 +159,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 1),
-              Text(
-                _getCurrentPeriod(period),
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  color: AppTheme.textDarkSecondary,
-                  fontWeight: FontWeight.w400,
+              const SizedBox(height: 2),
+              InkWell(
+                onTap: () => _openPeriodPicker(context),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.calendar_month_outlined,
+                        size: 12, color: AppTheme.primary),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        _getCurrentPeriod(period),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 14, color: AppTheme.primary),
+                  ],
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -388,72 +405,73 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       children: [
                         Row(
                           children: [
-                            Flexible(
-                              flex: 2,
+                            Expanded(
                               child: Text(
                                 'Safe Spending Hari Ini',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 11,
-                                  color: Colors.white.withValues(alpha: 0.82),
+                                  color: Colors.white.withValues(alpha: 0.85),
                                   fontWeight: FontWeight.w500,
                                 ),
-                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Flexible(
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: summary.safeSpendingToday > 0
+                                    ? const Color(0xFF86EFAC).withValues(alpha: 0.2)
+                                    : const Color(0xFFFDE047).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                               child: Text(
                                 summary.safeSpendingToday > 0
                                     ? 'Sisa Hari Ini'
-                                    : (summary.variableSpentToday > 0 ? 'Hari Ini Habis' : 'Belum Diset'),
+                                    : (summary.variableSpentToday > 0
+                                        ? 'Hari Ini Habis'
+                                        : 'Belum Diset'),
                                 style: GoogleFonts.dmSans(
-                                  fontSize: 10.5,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: summary.safeSpendingToday > 0
                                       ? const Color(0xFF86EFAC)
                                       : const Color(0xFFFDE047),
                                 ),
-                                textAlign: TextAlign.right,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Flexible(
-                              flex: 2,
-                              child: Text(
-                                summary.safeSpendingToday > 0
-                                    ? summary.safeSpendingToday.toRupiah
-                                    : 'Rp0',
-                                style: AppTheme.monoCurrency(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            Text(
+                              summary.safeSpendingToday > 0
+                                  ? summary.safeSpendingToday.toRupiah
+                                  : 'Rp0',
+                              style: AppTheme.monoCurrency(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Flexible(
+                            const SizedBox(width: 8),
+                            Expanded(
                               child: Text(
                                 summary.safeSpendingToday > 0
-                                    ? 'Jatah ${summary.dailyQuotaToday.toRupiah}/hari'
+                                    ? 'Jatah ${summary.dailyQuotaToday.toRupiahCompact}/hari'
                                     : (summary.daysRemainingInMonth > 1
-                                        ? 'Mulai besok: ${summary.dailyQuotaTomorrow.toRupiah}/hr'
-                                        : 'Terpakai ${summary.variableSpentToday.toRupiah}'),
+                                        ? 'Mulai besok: ${summary.dailyQuotaTomorrow.toRupiahCompact}/hr'
+                                        : 'Terpakai ${summary.variableSpentToday.toRupiahCompact}'),
                                 style: GoogleFonts.dmSans(
                                   fontSize: 11,
                                   color: Colors.white.withValues(alpha: 0.85),
                                   fontWeight: FontWeight.w500,
                                 ),
                                 textAlign: TextAlign.right,
-                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -1558,6 +1576,93 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         initialType: type,
         initialCategoryId: initialCategoryId,
         initialAmount: initialAmount,
+      ),
+    );
+  }
+
+  void _openPeriodPicker(BuildContext context) {
+    final current = ref.read(selectedPeriodProvider);
+    int month = current.month;
+    int year = current.year;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Pilih Periode',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+        ),
+        content: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: AppDropdownFormField<int>(
+                value: month,
+                labelText: 'Bulan',
+                prefixIcon: const Icon(Icons.calendar_month_outlined,
+                    size: 20, color: AppTheme.primary),
+                items: List.generate(12, (i) => i + 1).map((m) {
+                  const months = [
+                    'Januari',
+                    'Februari',
+                    'Maret',
+                    'April',
+                    'Mei',
+                    'Juni',
+                    'Juli',
+                    'Agustus',
+                    'September',
+                    'Oktober',
+                    'November',
+                    'Desember',
+                  ];
+                  return DropdownMenuItem(
+                    value: m,
+                    child: Text(
+                      months[m - 1],
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (v) => month = v ?? month,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: AppDropdownFormField<int>(
+                value: year,
+                labelText: 'Tahun',
+                items: [2024, 2025, 2026, 2027, 2028].map((y) {
+                  return DropdownMenuItem(
+                    value: y,
+                    child: Text(
+                      '$y',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (v) => year = v ?? year,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(selectedPeriodProvider.notifier).state =
+                  (month: month, year: year);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Terapkan'),
+          ),
+        ],
       ),
     );
   }
