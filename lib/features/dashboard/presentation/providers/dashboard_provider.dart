@@ -188,7 +188,9 @@ final dashboardSummaryProvider = Provider<AsyncValue<DashboardSummary>>((ref) {
   for (final b in budgets) {
     totalAllocated += b.allocatedAmount;
     if (b.isSavings) {
-      totalSavedInBudget += b.spentAmount;
+      final actualSpent = expenseByCat[b.categoryId]?.amount ?? 0;
+      final spent = actualSpent > 0 ? actualSpent : (totalSavings > 0 ? totalSavings : 0);
+      totalSavedInBudget += spent;
     } else {
       livingBudgetAllocated += b.allocatedAmount;
       totalBudgetSpent += b.spentAmount;

@@ -113,9 +113,10 @@ class ReportRepository {
         goalSavings += amount;
       }
     }
-    // Prevent double counting between linked transactions and savings table
-    final totalSavings =
-        transactionSavings >= goalSavings ? transactionSavings : goalSavings;
+    // Prevent double counting: Prioritize actual transaction savings, or fallback to goal savings
+    final totalSavings = transactionSavings > 0
+        ? transactionSavings
+        : (goalSavings > 0 ? goalSavings : 0);
 
     // 6. Calculate Net Cash Flow & Savings Rate
     final netCashFlow = totalIncome - totalExpense - totalDebtPayment - totalSavings;
@@ -129,7 +130,13 @@ class ReportRepository {
     final List<CategorySpendingSummary> breakdown = [];
     for (final b in budgets) {
       final name = b.categoryName ?? 'Kategori';
-      final spent = b.spentAmount;
+      final actualSpent = spentPerCategory[name] ?? 0;
+      final int spent;
+      if (b.isSavings) {
+        spent = actualSpent > 0 ? actualSpent : (totalSavings > 0 ? totalSavings : 0);
+      } else {
+        spent = actualSpent > 0 ? actualSpent : b.spentAmount;
+      }
       final pct = (spent / denominator).clamp(0.0, 1.0);
       breakdown.add(
         CategorySpendingSummary(

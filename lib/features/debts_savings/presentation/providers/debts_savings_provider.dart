@@ -6,6 +6,10 @@ import '../../data/savings_repository.dart';
 import '../../domain/debt.dart';
 import '../../domain/savings_goal.dart';
 import '../../domain/savings_transaction.dart';
+import '../../../../features/transactions/presentation/providers/transactions_provider.dart';
+import '../../../../features/salary_allocation/presentation/providers/salary_allocation_provider.dart';
+import '../../../../features/reports/presentation/providers/reports_provider.dart';
+import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 
 // ─── Repositories ────────────────────────────────────────────────────────────
 final debtRepositoryProvider = Provider<DebtRepository>((ref) {
@@ -71,6 +75,10 @@ class DebtsNotifier extends AsyncNotifier<List<Debt>> {
     state = AsyncValue.data(
       (state.value ?? []).where((d) => d.id != debtId).toList(),
     );
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(monthlyBudgetsProvider);
+    ref.invalidate(monthlyReportProvider);
+    ref.invalidate(dashboardSummaryProvider);
   }
 }
 
@@ -133,5 +141,9 @@ class SavingsGoalsNotifier extends AsyncNotifier<List<SavingsGoal>> {
     state = AsyncValue.data(
       (state.value ?? []).where((g) => g.id != goalId).toList(),
     );
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(monthlyBudgetsProvider);
+    ref.invalidate(monthlyReportProvider);
+    ref.invalidate(dashboardSummaryProvider);
   }
 }

@@ -19,6 +19,7 @@ import '../../salary_allocation/presentation/providers/salary_allocation_provide
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/presentation/providers/transactions_provider.dart';
 import '../../transactions/presentation/widgets/add_transaction_dialog.dart';
+import '../../debts_savings/presentation/providers/debts_savings_provider.dart';
 import 'providers/dashboard_provider.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
@@ -30,6 +31,25 @@ class DashboardPage extends ConsumerStatefulWidget {
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   bool _isBalanceVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runStartupSync();
+    });
+  }
+
+  Future<void> _runStartupSync() async {
+    try {
+      await ref.read(savingsRepositoryProvider).cleanupPhantomSavingsAndRecalibrate();
+      if (mounted) {
+        ref.invalidate(monthlyBudgetsProvider);
+        ref.invalidate(transactionsProvider);
+        ref.invalidate(dashboardSummaryProvider);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +70,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
+            await ref.read(savingsRepositoryProvider).cleanupPhantomSavingsAndRecalibrate();
             ref.invalidate(monthlyBudgetsProvider);
             ref.invalidate(transactionsProvider);
             ref.invalidate(dashboardSummaryProvider);

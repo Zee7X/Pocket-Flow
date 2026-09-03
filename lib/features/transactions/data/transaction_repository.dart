@@ -135,12 +135,12 @@ class TransactionRepository {
     return updatedTx;
   }
 
-  /// Delete transaction and adjust budget spent_amount
+  /// Delete transaction and adjust budget spent_amount, with bi-directional cleanup
   Future<void> deleteTransaction(String id) async {
     // 1. Fetch transaction before deleting
     final txRes = await _client
         .from('pf_transactions')
-        .select('category_id, type, amount, transaction_date')
+        .select('category_id, type, amount, transaction_date, note')
         .eq('id', id)
         .maybeSingle();
 
@@ -149,6 +149,7 @@ class TransactionRepository {
       final typeStr = txRes['type'] as String;
       final amount = (txRes['amount'] as num).toInt();
       final date = DateTime.parse(txRes['transaction_date'] as String);
+      final note = txRes['note'] as String?;
 
       // If it was an expense, subtract from monthly budget spent_amount
       if (typeStr == 'expense' && catId != null) {
@@ -158,6 +159,71 @@ class TransactionRepository {
           year: date.year,
           delta: -amount,
         );
+      }
+
+      // Bi-directional sync: if linked to savings deposit (e.g. "Setor: ..."), clean up pf_savings_transactions
+      if (note != null && note.startsWith('Setor:')) {
+        try {
+          final goalName = note.substring(6).split('(').first.trim();
+          final goals = await _client
+              .from('pf_savings_goals')
+              .select('id, current_amount')
+              .eq('user_id', _userId)
+              .eq('name', goalName);
+
+          for (final g in (goals as List)) {
+            final gid = g['id'] as String;
+            // Delete matching savings transaction
+            await _client
+                .from('pf_savings_transactions')
+                .delete()
+                .eq('goal_id', gid)
+                .eq('user_id', _userId)
+                .eq('amount', amount);
+
+            // Decrease current_amount
+            final cur = (g['current_amount'] as num?)?.toInt() ?? 0;
+            final newCur = (cur - amount) > 0 ? (cur - amount) : 0;
+            await _client
+                .from('pf_savings_goals')
+                .update({'current_amount': newCur})
+                .eq('id', gid);
+          }
+        } catch (_) {}
+      }
+
+      // Bi-directional sync: if linked to debt payment
+      if (note != null && (note.contains('Cicilan') || note.contains('Bayar'))) {
+        try {
+          final payments = await _client
+              .from('pf_debt_payments')
+              .select('id, debt_id')
+              .eq('user_id', _userId)
+              .eq('amount', amount);
+          for (final p in (payments as List)) {
+            final pid = p['id'] as String;
+            final did = p['debt_id'] as String;
+            await _client
+                .from('pf_debt_payments')
+                .delete()
+                .eq('id', pid)
+                .eq('user_id', _userId);
+
+            // Restore debt remaining_amount
+            final debtRes = await _client
+                .from('pf_debts')
+                .select('remaining_amount, total_amount')
+                .eq('id', did)
+                .single();
+            final curRem = (debtRes['remaining_amount'] as num).toInt();
+            final totalAmt = (debtRes['total_amount'] as num).toInt();
+            final newRem = (curRem + amount) < totalAmt ? (curRem + amount) : totalAmt;
+            await _client.from('pf_debts').update({
+              'remaining_amount': newRem,
+              'is_paid': false,
+            }).eq('id', did);
+          }
+        } catch (_) {}
       }
     }
 

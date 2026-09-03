@@ -11,7 +11,9 @@ import '../../../core/widgets/app_dropdown_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/responsive_center.dart';
+import '../../debts_savings/presentation/providers/debts_savings_provider.dart';
 import '../../salary_allocation/presentation/providers/salary_allocation_provider.dart';
+import '../../transactions/presentation/providers/transactions_provider.dart';
 import '../domain/monthly_report.dart';
 import 'providers/reports_provider.dart';
 
@@ -27,6 +29,23 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runStartupSync();
+    });
+  }
+
+  Future<void> _runStartupSync() async {
+    try {
+      await ref.read(savingsRepositoryProvider).cleanupPhantomSavingsAndRecalibrate();
+      if (mounted) {
+        ref.invalidate(monthlyReportProvider);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +79,10 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
+            await ref.read(savingsRepositoryProvider).cleanupPhantomSavingsAndRecalibrate();
             ref.invalidate(monthlyReportProvider);
+            ref.invalidate(monthlyBudgetsProvider);
+            ref.invalidate(transactionsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),

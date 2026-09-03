@@ -32,6 +32,13 @@ Future<void> main() async {
   };
 
   // Initialize Supabase
+  if (!SupabaseConstants.isConfigured) {
+    debugPrint(
+      '⚠️ PERINGATAN: Supabase belum dikonfigurasi! '
+      'Pastikan menyalin .env.example ke .env dan menjalankan dengan '
+      '--dart-define-from-file=.env',
+    );
+  }
   try {
     await Supabase.initialize(
       url: SupabaseConstants.url,

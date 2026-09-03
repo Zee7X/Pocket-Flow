@@ -93,16 +93,34 @@ PocketFlow dirancang dengan estetika **Clean Light Neo-Banking**:
    flutter pub get
    ```
 
-3. **Jalankan aplikasi (Mode Web)**:
+3. **Konfigurasi Lingkungan (Environment Variables)**:
+   Salin berkas template konfigurasi `.env.example` menjadi `.env`:
    ```bash
-   flutter run -d chrome
+   cp .env.example .env
+   ```
+   Buka berkas `.env` dan masukkan kredensial project Supabase Anda:
+   ```env
+   SUPABASE_URL=https://your-project-ref.supabase.co
+   SUPABASE_ANON_KEY=your-supabase-anon-key-here
+   ```
+
+4. **Jalankan aplikasi (Mode Web)**:
+   ```bash
+   flutter run -d chrome --dart-define-from-file=.env
    ```
    *atau jalankan pada web server lokal:*
    ```bash
-   flutter run -d web-server --web-port=7070
+   flutter run -d web-server --web-port=52624 --dart-define-from-file=.env
    ```
 
-4. **Menjalankan Pengujian Otomatis (Automated Tests)**:
+5. **Build APK Android (Mode Rilis)**:
+   Untuk mengompilasi file APK yang siap dipasang di HP Android:
+   ```bash
+   flutter build apk --release --dart-define-from-file=.env
+   ```
+   *Hasil file APK akan berada di folder `build/app/outputs/flutter-apk/app-release.apk`.*
+
+6. **Menjalankan Pengujian Otomatis (Automated Tests)**:
    ```bash
    flutter test
    ```
