@@ -9,6 +9,8 @@
   [![Design](https://img.shields.io/badge/Design-Neo--Banking%20Light-2563EB)](#-desain-antarmuka)
   [![License](https://img.shields.io/badge/License-Private-slate.svg)](#)
 
+  [![GitGotchi](https://gitgochi.lumelo.my.id/api/badge/zee7x/pocket-flow.svg)](https://gitgochi.lumelo.my.id/pet/zee7x/pocket-flow)
+
   **PocketFlow** adalah aplikasi manajemen finansial personal modern yang dirancang dengan metodologi **Salary-First Zero-Based Budgeting**. Aplikasi ini membantu Anda mengalokasikan setiap rupiah gaji secara terencana sejak hari pertama gajian masuk, mencegah kebiasaan boncos dengan metrik **Safe Spending Hari Ini**, serta memonitor target tabungan dan cicilan dalam satu ekosistem antarmuka neo-banking yang elegan.
 </div>
 
