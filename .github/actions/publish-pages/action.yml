@@ -1,0 +1,62 @@
+# Mengganti satu bagian situs GitHub Pages (web atau folder download)
+# tanpa menghapus bagian lain, lalu menyimpan gh-pages sebagai SATU commit
+# baru (riwayat lama dibuang supaya repo tidak membesar).
+name: Publish ke GitHub Pages
+description: Ganti bagian web atau download di branch gh-pages
+inputs:
+  part:
+    description: "web | download"
+    required: true
+  source:
+    description: Folder hasil build
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        PART: ${{ inputs.part }}
+        SRC: ${{ inputs.source }}
+        REPO: ${{ github.repository }}
+        TOKEN: ${{ github.token }}
+        SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+        SRC=$(realpath "$SRC")
+        WORK=$(mktemp -d)
+        cd "$WORK"
+        git init -q -b gh-pages
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+
+        # Coba sampai 3x bila job lain mendorong gh-pages bersamaan.
+        for attempt in 1 2 3; do
+          rm -rf site && mkdir site
+          if git fetch -q --depth 1 origin gh-pages 2>/dev/null; then
+            git --work-tree=site checkout -q FETCH_HEAD -- . || true
+          fi
+          if [ "$PART" = "web" ]; then
+            # Simpan folder download, ganti sisanya dengan build web baru.
+            find site -mindepth 1 -maxdepth 1 ! -name download -exec rm -rf {} +
+            cp -r "$SRC"/. site/
+            cp site/index.html site/404.html
+          else
+            rm -rf site/download
+            mkdir -p site/download
+            cp -r "$SRC"/. site/download/
+          fi
+          touch site/.nojekyll
+
+          rm -rf .git/index
+          git checkout -q --orphan "deploy-$attempt"
+          git --work-tree=site add -A
+          git --work-tree=site commit -q -m "Deploy ${PART} dari ${SHA::7}"
+          if git push -q -f origin HEAD:gh-pages; then
+            echo "gh-pages diperbarui (${PART})."
+            exit 0
+          fi
+          echo "Push gagal, coba lagi..."
+          sleep 10
+        done
+        exit 1

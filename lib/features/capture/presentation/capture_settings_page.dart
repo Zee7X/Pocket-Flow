@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/notifications/notification_service.dart';
 import '../../../core/widgets/app_modal.dart';
 import '../../../core/widgets/responsive_center.dart';
 import '../../../core/widgets/ui.dart';
@@ -71,6 +72,8 @@ class _CaptureSettingsPageState extends ConsumerState<CaptureSettingsPage>
       confirmLabel: 'Lanjut ke Pengaturan',
     );
     if (!ok) return;
+    // Notifikasi "transaksi terdeteksi" butuh izin notifikasi (Android 13+).
+    await NotificationService().ensurePermission();
     final channel = ref.read(captureChannelProvider);
     await channel.setAllowedPackages(
       ref.read(captureSettingsProvider).allowedPackages,

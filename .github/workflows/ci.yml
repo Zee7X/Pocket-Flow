@@ -1,32 +1,32 @@
 # CI/CD PocketFlow
 #
-# Setiap push ke main:
-#   1. analyze + test
-#   2. build web (release) + APK Android (arm64 & armv7)
-#   3. uji jalan: APK dipasang & dibuka di emulator Android, aplikasi iOS
-#      di-build (release, tanpa signing) dan dibuka di simulator iPhone.
-#      Screenshot keduanya tersimpan sebagai artifact.
-#   4. deploy ke GitHub Pages (branch gh-pages):
-#        Web : https://zee7x.github.io/Pocket-Flow/
-#        APK : https://zee7x.github.io/Pocket-Flow/download/pocketflow-arm64.apk
-#              https://zee7x.github.io/Pocket-Flow/download/pocketflow-armv7.apk
+# Push ke main (kecuali perubahan dokumen saja):
+#   1. analyze + test                                   (~1 menit)
+#   2. build web  -> langsung tayang di GitHub Pages    (~3-4 menit sejak push)
+#   3. build APK  -> uji buka di emulator Android -> APK diperbarui di Pages
 #
-# gh-pages selalu ditimpa dengan SATU commit baru (force orphan), jadi build
-# lama otomatis terhapus dan ukuran repo tidak terus membesar.
+# Pull request ke main: analyze + test, build & uji jalan iOS di simulator.
+# iOS juga bisa dijalankan manual: Actions -> CI/CD -> Run workflow.
 #
-# Pull request hanya menjalankan analyze + test.
+# Link:
+#   Web : https://zee7x.github.io/Pocket-Flow/
+#   APK : https://zee7x.github.io/Pocket-Flow/download/
 #
-# Butuh 2 Repository variables (Settings → Secrets and variables → Actions →
-# Variables): SUPABASE_URL dan SUPABASE_ANON_KEY. Anon key memang publik
-# (ikut di aplikasi), data tetap dilindungi RLS.
+# gh-pages selalu ditimpa dengan SATU commit (riwayat build lama tidak
+# disimpan), jadi ukuran repo tidak terus membesar.
+#
+# Butuh Repository variables SUPABASE_URL dan SUPABASE_ANON_KEY
+# (Settings -> Secrets and variables -> Actions -> Variables).
 
 name: CI/CD
 
 on:
   push:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**", "LICENSE", ".kiro/**"]
   pull_request:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**", "LICENSE", ".kiro/**"]
   workflow_dispatch:
 
 concurrency:
@@ -51,48 +51,71 @@ jobs:
       - run: flutter analyze
       - run: flutter test
 
-  build:
-    name: Build web & APK
+  # ─── Web: build lalu langsung tayang ─────────────────────────────────────
+  web:
+    name: Build & deploy web
     needs: test
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cek konfigurasi Supabase
+      - name: Konfigurasi Supabase
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "::error::Repository variables SUPABASE_URL dan SUPABASE_ANON_KEY belum diisi (Settings → Secrets and variables → Actions → Variables)."
+            echo "::error::Repository variables SUPABASE_URL dan SUPABASE_ANON_KEY belum diisi."
             exit 1
           fi
           printf '{"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s"}' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > "$RUNNER_TEMP/env.json"
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-
       - run: flutter pub get
-
       - name: Build web
         run: >
           flutter build web --release
           --base-href /Pocket-Flow/
           --dart-define-from-file=$RUNNER_TEMP/env.json
+      - name: Deploy web (APK yang sudah ada tetap dipertahankan)
+        uses: ./.github/actions/publish-pages
+        with:
+          part: web
+          source: build/web
 
+  # ─── Android: build APK, uji buka di emulator, lalu publikasikan ─────────
+  android:
+    name: Build APK & uji di emulator
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Konfigurasi Supabase
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: printf '{"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s"}' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > "$RUNNER_TEMP/env.json"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
       - name: Build APK
-        # Maven Central kadang membalas 429 (terlalu banyak permintaan) ke
-        # runner GitHub. Ulangi sampai 3 kali dengan jeda.
+        # Maven Central kadang membalas 429 ke runner GitHub: ulangi sampai 3x.
         run: |
           for i in 1 2 3; do
             flutter build apk --release --split-per-abi \
@@ -103,22 +126,41 @@ jobs:
             sleep 60
           done
           exit 1
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk-x64-emulator
-          path: build/app/outputs/flutter-apk/app-x86_64-release.apk
-          retention-days: 1
-
-      - name: Susun situs
+      - name: Aktifkan KVM
         run: |
-          mkdir -p site/download
-          cp -r build/web/. site/
-          cp site/index.html site/404.html
-          touch site/.nojekyll
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk site/download/pocketflow-arm64.apk
-          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk site/download/pocketflow-armv7.apk
-          cat > site/download/index.html <<EOF
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Uji buka di emulator Android 14
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install -r build/app/outputs/flutter-apk/app-x86_64-release.apk
+            adb logcat -c
+            adb shell monkey -p com.example.pocket_flow -c android.intent.category.LAUNCHER 1
+            sleep 30
+            adb exec-out screencap -p > android-launch.png
+            adb logcat -d > android-logcat.txt
+            if grep -q "FATAL EXCEPTION" android-logcat.txt; then echo "::error::Aplikasi crash di Android"; grep -A20 "FATAL EXCEPTION" android-logcat.txt; exit 1; fi
+            adb shell pidof com.example.pocket_flow || (echo "::error::Proses aplikasi tidak berjalan"; exit 1)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-smoke
+          path: |
+            android-launch.png
+            android-logcat.txt
+          retention-days: 3
+      - name: Susun folder unduhan
+        run: |
+          mkdir -p dl
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dl/pocketflow-arm64.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dl/pocketflow-armv7.apk
+          cat > dl/index.html <<EOF
           <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
           <title>Unduh PocketFlow</title>
           <body style="font-family:system-ui;max-width:480px;margin:40px auto;padding:0 16px;line-height:1.5">
@@ -129,56 +171,17 @@ jobs:
           <p><a href="../">Buka versi web</a></p>
           </body>
           EOF
+      - name: Publikasikan APK (web yang sudah tayang tetap dipertahankan)
+        uses: ./.github/actions/publish-pages
+        with:
+          part: download
+          source: dl
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: site
-          path: site
-          retention-days: 3
-
-  android-smoke:
-    name: Uji jalan di emulator Android
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: apk-x64-emulator
-          path: apk
-      - name: Aktifkan KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          target: google_apis
-          disable-animations: true
-          script: |
-            adb install -r apk/app-x86_64-release.apk
-            adb logcat -c
-            adb shell monkey -p com.example.pocket_flow -c android.intent.category.LAUNCHER 1
-            sleep 30
-            adb exec-out screencap -p > android-launch.png
-            adb logcat -d > android-logcat.txt
-            if grep -q "FATAL EXCEPTION" android-logcat.txt; then echo "::error::Aplikasi crash di Android"; grep -A20 "FATAL EXCEPTION" android-logcat.txt; exit 1; fi
-            adb shell pidof com.example.pocket_flow || (echo "::error::Proses aplikasi tidak berjalan"; exit 1)
-            echo "Aplikasi berjalan di Android"
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: android-smoke
-          path: |
-            android-launch.png
-            android-logcat.txt
-          retention-days: 3
-
+  # ─── iOS: hanya di pull request & manual ─────────────────────────────────
   ios:
     name: Build & uji jalan iOS
     needs: test
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     # Runner Intel supaya Google ML Kit bisa jalan di simulator.
     runs-on: macos-15-intel
     steps:
@@ -187,7 +190,6 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
-      - run: xcodebuild -version
       - name: Konfigurasi Supabase
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
@@ -206,16 +208,13 @@ jobs:
       - name: Buka di simulator iPhone
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
-          echo "Simulator: $DEVICE"
           xcrun simctl boot "$DEVICE"
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl install "$DEVICE" build/ios/iphonesimulator/Runner.app
           xcrun simctl launch "$DEVICE" com.example.pocketFlow
           sleep 40
           xcrun simctl io "$DEVICE" screenshot ios-launch.png
-          if xcrun simctl spawn "$DEVICE" launchctl list | grep -q "com.example.pocketFlow"; then
-            echo "Aplikasi berjalan di iOS"
-          else
+          if ! xcrun simctl spawn "$DEVICE" launchctl list | grep -q "com.example.pocketFlow"; then
             echo "::error::Aplikasi tidak berjalan di simulator iOS"
             xcrun simctl spawn "$DEVICE" log show --last 2m --predicate 'process == "Runner"' | tail -50
             exit 1
@@ -226,26 +225,3 @@ jobs:
           name: ios-smoke
           path: ios-launch.png
           retention-days: 3
-
-  deploy:
-    name: Deploy ke GitHub Pages
-    needs: [build, android-smoke]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    concurrency:
-      group: deploy-pages
-      cancel-in-progress: false
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: site
-          path: site
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: site
-          force_orphan: true
-          commit_message: "Deploy ${{ github.sha }} (build #${{ github.run_number }})"
