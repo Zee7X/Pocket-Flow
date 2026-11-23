@@ -10,6 +10,7 @@ import '../domain/auth_state.dart';
 import 'providers/auth_provider.dart';
 import '../../../app/theme.dart';
 import '../../../app/router.dart';
+import '../../../core/widgets/app_modal.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -283,9 +284,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   void _showForgotPasswordDialog() {
     final emailCtrl = TextEditingController(text: _emailCtrl.text);
-    showDialog<void>(
+    showAppModal<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => AppAlertModal(
         scrollable: true,
         backgroundColor: AppTheme.surfaceLight,
         shape: RoundedRectangleBorder(

@@ -9,6 +9,7 @@ import '../../../../core/widgets/app_dropdown_field.dart';
 import '../../../../core/utils/error_helper.dart';
 import '../../domain/debt.dart';
 import '../providers/debts_savings_provider.dart';
+import '../../../../core/widgets/app_modal.dart';
 
 class AddDebtDialog extends ConsumerStatefulWidget {
   const AddDebtDialog({super.key});
@@ -38,7 +39,7 @@ class _AddDebtDialogState extends ConsumerState<AddDebtDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppAlertModal(
       scrollable: true,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       backgroundColor: AppTheme.surfaceLight,

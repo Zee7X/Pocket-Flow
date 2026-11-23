@@ -10,6 +10,7 @@ import '../../../../core/formatters/currency_input_formatter.dart';
 import '../../domain/monthly_budget.dart';
 import '../../domain/salary_entry.dart';
 import '../providers/salary_allocation_provider.dart';
+import '../../../../core/widgets/app_modal.dart';
 
 class SalaryHistoryDetailSheet extends ConsumerStatefulWidget {
   final SalaryEntry entry;
@@ -56,7 +57,7 @@ class _SalaryHistoryDetailSheetState
   }
 
   void _openEditCategoryDialog(MonthlyBudget budget) {
-    showDialog<void>(
+    showAppModal<void>(
       context: context,
       builder: (ctx) => _EditCategoryBudgetDialog(
         budget: budget,
@@ -605,7 +606,7 @@ class _EditCategoryBudgetDialogState
     final periodStr = DateFormat('MMMM yyyy')
         .format(DateTime(widget.periodYear, widget.periodMonth));
 
-    return AlertDialog(
+    return AppAlertModal(
       backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),

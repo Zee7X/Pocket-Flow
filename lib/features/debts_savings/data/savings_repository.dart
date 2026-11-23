@@ -204,6 +204,15 @@ class SavingsRepository {
     } catch (_) {}
   }
 
+  /// Samakan spent_amount budget bulan ini dan bulan lalu dengan transaksi
+  /// sebenarnya. Tidak menghapus data apa pun.
+  Future<void> recalibrateRecentBudgets() async {
+    final now = DateTime.now();
+    for (final p in [DateTime(now.year, now.month, 1), DateTime(now.year, now.month - 1, 1)]) {
+      await recalibrateMonthlyBudgets(month: p.month, year: p.year);
+    }
+  }
+
   /// Recalibrate all spent_amounts in pf_monthly_budgets to match actual transactions
   Future<void> recalibrateMonthlyBudgets({required int month, required int year}) async {
     try {

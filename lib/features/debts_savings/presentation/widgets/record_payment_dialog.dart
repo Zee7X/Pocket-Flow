@@ -13,6 +13,7 @@ import '../../../transactions/domain/transaction.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../domain/debt.dart';
 import '../providers/debts_savings_provider.dart';
+import '../../../../core/widgets/app_modal.dart';
 
 class RecordPaymentDialog extends ConsumerStatefulWidget {
   final Debt debt;
@@ -47,7 +48,7 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppAlertModal(
       scrollable: true,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       backgroundColor: AppTheme.surfaceLight,

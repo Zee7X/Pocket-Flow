@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
-import '../../../core/widgets/app_dropdown_field.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
@@ -21,6 +20,15 @@ import '../../transactions/presentation/providers/transactions_provider.dart';
 import '../../transactions/presentation/widgets/add_transaction_dialog.dart';
 import '../../debts_savings/presentation/providers/debts_savings_provider.dart';
 import 'providers/dashboard_provider.dart';
+import '../../../core/widgets/app_shell.dart' show openQuickAddModal;
+import '../../../core/widgets/period_picker.dart';
+import '../../../core/widgets/ui.dart';
+import '../../capture/presentation/providers/capture_provider.dart';
+import '../../insights/presentation/widgets/insights_card.dart';
+import '../../recurring/domain/recurring_bill.dart';
+import '../../recurring/presentation/providers/recurring_provider.dart';
+import '../../smart/presentation/smart_input_sheet.dart';
+import '../../wallets/presentation/providers/wallets_provider.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -42,7 +50,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   Future<void> _runStartupSync() async {
     try {
-      await ref.read(savingsRepositoryProvider).cleanupPhantomSavingsAndRecalibrate();
+      await ref.read(savingsRepositoryProvider).recalibrateRecentBudgets();
       if (mounted) {
         ref.invalidate(monthlyBudgetsProvider);
         ref.invalidate(transactionsProvider);
@@ -70,16 +78,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            await ref.read(savingsRepositoryProvider).cleanupPhantomSavingsAndRecalibrate();
+            await ref
+                .read(savingsRepositoryProvider)
+                .recalibrateRecentBudgets();
             ref.invalidate(monthlyBudgetsProvider);
             ref.invalidate(transactionsProvider);
             ref.invalidate(dashboardSummaryProvider);
+            ref.invalidate(walletsProvider);
+            ref.invalidate(recurringBillsProvider);
+            await ref.read(pendingCapturesProvider.notifier).drainNative();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: ResponsiveCenter(
               maxWidth: 800,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: summaryAsync.when(
                 loading: () => const Center(
                   child: Padding(
@@ -96,35 +109,34 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   },
                 ),
                 data: (summary) {
+                  final pending = ref.watch(pendingCountProvider);
+                  final upcoming = ref.watch(upcomingBillsProvider);
                   return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ── 0. Top Profile & Action Header ─────────────────────
                       _buildTopHeader(greetingName, period),
-
                       const SizedBox(height: 16),
-
-                      // ── 1. Hero Card: Royal Blue Neo-Banking Card ──────────
+                      if (pending > 0) ...[
+                        _buildPendingBanner(pending),
+                        const SizedBox(height: 12),
+                      ],
                       _buildHeroCard(summary, greetingName),
-
-                      const SizedBox(height: 20),
-
-                      // ── 2. Two-Column Stats Overview ─────────────────────────
+                      const SizedBox(height: 12),
                       _buildQuickStats(summary),
-
+                      if (upcoming.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        _buildUpcomingBills(upcoming),
+                      ],
                       const SizedBox(height: 24),
-
-                      // ── 3. Category Tracker / Breakdown ──────────────────────
+                      const InsightsCard(limit: 3),
+                      const SizedBox(height: 24),
                       if (summary.hasBudgetAllocation)
                         _buildCategoryBudgets(summary)
                       else
                         _buildUnallocatedModeSection(summary),
-
                       const SizedBox(height: 24),
-
-                      // ── 4. Recent Transactions ──────────────────────────────
+                      _buildWalletsStrip(),
                       _buildRecentTransactions(summary.recentTransactions),
-
                       const SizedBox(height: 28),
                     ],
                   );
@@ -137,30 +149,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  // ─── 0. Top Profile & Action Header ─────────────────────────────────────────
+  // ─── Header ────────────────────────────────────────────────────────────────
   Widget _buildTopHeader(String greetingName, ({int month, int year}) period) {
+    final pending = ref.watch(pendingCountProvider);
     return Row(
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            gradient: AppTheme.accentGradient,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
           child: Text(
             greetingName.isNotEmpty ? greetingName[0].toUpperCase() : 'U',
             style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: AppTheme.primary,
               fontSize: 16,
             ),
           ),
@@ -172,7 +173,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Halo, $greetingName 👋',
+                'Halo, $greetingName',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -187,48 +188,45 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.calendar_month_outlined,
-                        size: 12, color: AppTheme.primary),
-                    const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         _getCurrentPeriod(period),
                         style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                          color: AppTheme.textDarkSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 14, color: AppTheme.primary),
+                    const Icon(
+                      Icons.expand_more_rounded,
+                      size: 16,
+                      color: AppTheme.textDarkSecondary,
+                    ),
                   ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 8),
         _buildHeaderIconButton(
-          icon: Icons.tune_rounded,
-          tooltip: 'Aturan & Kategori',
-          color: AppTheme.primary,
-          onTap: () => context.push(AppRoutes.categoriesRules),
+          icon: Icons.inbox_outlined,
+          tooltip: 'Perlu Ditinjau',
+          badge: pending,
+          onTap: () => context.push(AppRoutes.inbox),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         _buildHeaderIconButton(
-          icon: Icons.assessment_rounded,
-          tooltip: 'Laporan Keuangan',
-          color: AppTheme.primary,
+          icon: Icons.insert_chart_outlined_rounded,
+          tooltip: 'Laporan',
           onTap: () => context.push(AppRoutes.reports),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         _buildHeaderIconButton(
-          icon: Icons.logout_rounded,
-          tooltip: 'Logout',
-          color: AppTheme.textDarkSecondary,
-          onTap: () => ref.read(authProvider.notifier).signOut(),
+          icon: Icons.menu_rounded,
+          tooltip: 'Lainnya',
+          onTap: () => context.push(AppRoutes.more),
         ),
       ],
     );
@@ -237,364 +235,395 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget _buildHeaderIconButton({
     required IconData icon,
     required String tooltip,
-    required Color color,
     required VoidCallback onTap,
+    int badge = 0,
   }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-          child: Container(
-            padding: const EdgeInsets.all(8.5),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceLight,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.borderLightSubtle),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      icon: Badge(
+        isLabelVisible: badge > 0,
+        label: Text('$badge'),
+        backgroundColor: AppTheme.danger,
+        child: Icon(icon, size: 22, color: AppTheme.textDarkPrimary),
+      ),
+    );
+  }
+
+  Widget _buildPendingBanner(int pending) {
+    return Material(
+      color: AppTheme.primary.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => context.push(AppRoutes.inbox),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.notifications_active_outlined,
+                size: 20,
+                color: AppTheme.primary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '$pending transaksi terdeteksi, menunggu ditinjau',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primary,
+                  ),
                 ),
-              ],
-            ),
-            child: Icon(icon, size: 18, color: color),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.primary),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // ─── 1. Royal Blue Hero Card (Dual-Mode: Allocation vs Cashflow) ───────────
+  // ─── Hero ─────────────────────────────────────────────────────────────────
   Widget _buildHeroCard(DashboardSummary summary, String userName) {
     final bool hasAllocation = summary.hasBudgetAllocation;
-    final bool isSurplus = summary.netCashflow >= 0;
+    final white70 = Colors.white.withValues(alpha: 0.72);
+    String hide(String v) => _isBalanceVisible ? v : 'Rp ••••••';
+
+    final quota = summary.dailyQuotaToday;
+    final spentToday = summary.variableSpentToday;
+    final progress = quota > 0 ? (spentToday / quota).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       decoration: BoxDecoration(
-        gradient: AppTheme.heroGradient,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXL),
-        boxShadow: AppTheme.heroShadow,
+        color: AppTheme.heroSurface,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Greeting & Status Tag
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Text(
-                      'Sisa Saldo Kas Bulan Ini',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: hasAllocation
-                            ? Colors.white.withValues(alpha: 0.2)
-                            : (isSurplus
-                                ? AppTheme.success.withValues(alpha: 0.35)
-                                : AppTheme.danger.withValues(alpha: 0.35)),
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusSmall),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Text(
-                        hasAllocation
-                            ? 'Budgeting'
-                            : (isSurplus ? 'Surplus' : 'Defisit'),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  hasAllocation
+                      ? 'Safe Spending Hari Ini'
+                      : 'Sisa Saldo Kas Bulan Ini',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: white70,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              GestureDetector(
+              InkWell(
                 onTap: () =>
                     setState(() => _isBalanceVisible = !_isBalanceVisible),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
                   child: Icon(
                     _isBalanceVisible
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: Colors.white,
-                    size: 16,
+                    color: white70,
+                    size: 18,
                   ),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 8),
-
-          // Large Balance Number: Real Remaining Cashflow
-          Text(
-            _isBalanceVisible
-                ? (summary.netCashflow >= 0
-                    ? summary.netCashflow.toRupiah
-                    : '-${summary.netCashflow.abs().toRupiah}')
-                : 'Rp ••••••••',
-            style: AppTheme.monoCurrency(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          // Days remaining / Budget subtitle
+          const SizedBox(height: 6),
           Text(
             hasAllocation
-                ? 'Sisa Budget: ${summary.remainingBudget.toRupiah} • Sisa ${summary.daysRemainingInMonth} hari'
-                : 'Pemasukan: ${summary.totalIncome.toRupiah} • Pengeluaran: ${summary.totalExpense.toRupiah}',
-            style: GoogleFonts.dmSans(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.82),
+                ? hide(summary.safeSpendingToday.toRupiah)
+                : hide(
+                    summary.netCashflow >= 0
+                        ? summary.netCashflow.toRupiah
+                        : '-${summary.netCashflow.abs().toRupiah}',
+                  ),
+            style: Ui.amount(
+              size: 30,
+              color: Colors.white,
+              weight: FontWeight.w700,
             ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
           ),
-
-          // Integrated Smart Daily Safe Spending Card
-          if (hasAllocation) ...[
+          const SizedBox(height: 4),
+          Text(
+            hasAllocation
+                ? (summary.safeSpendingToday > 0
+                      ? 'Jatah ${quota.toRupiahCompact}/hari, terpakai ${spentToday.toRupiahCompact} hari ini'
+                      : (summary.daysRemainingInMonth > 1
+                            ? 'Jatah hari ini sudah terpakai. Mulai besok ${summary.dailyQuotaTomorrow.toRupiahCompact}/hari'
+                            : 'Terpakai ${spentToday.toRupiahCompact} hari ini'))
+                : 'Pemasukan ${summary.totalIncome.toRupiahCompact} · Pengeluaran ${summary.totalExpense.toRupiahCompact}',
+            style: GoogleFonts.dmSans(fontSize: 12.5, color: white70),
+            maxLines: 2,
+          ),
+          if (hasAllocation && quota > 0) ...[
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  width: 0.8,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+                backgroundColor: Colors.white.withValues(alpha: 0.15),
+                valueColor: AlwaysStoppedAnimation(
+                  progress >= 1
+                      ? const Color(0xFFFCA5A5)
+                      : const Color(0xFF86EFAC),
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: summary.safeSpendingToday > 0
-                          ? const Color(0xFF86EFAC).withValues(alpha: 0.2)
-                          : const Color(0xFFFDE047).withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      summary.safeSpendingToday > 0
-                          ? Icons.bolt_rounded
-                          : Icons.schedule_rounded,
-                      size: 15,
-                      color: summary.safeSpendingToday > 0
-                          ? const Color(0xFF86EFAC)
-                          : const Color(0xFFFDE047),
+            ),
+          ],
+          if (hasAllocation) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _heroStat(
+                    'Sisa budget · ${summary.daysRemainingInMonth} hari lagi',
+                    hide(summary.remainingBudget.toRupiahCompact),
+                  ),
+                ),
+                Expanded(
+                  child: _heroStat(
+                    'Saldo kas bulan ini',
+                    hide(
+                      summary.netCashflow >= 0
+                          ? summary.netCashflow.toRupiahCompact
+                          : '-${summary.netCashflow.abs().toRupiahCompact}',
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _heroAction(Icons.mic_none_rounded, 'Bicara', () => showVoiceCapture(context)),
+              _heroAction(Icons.auto_awesome_outlined, 'Ketik', () => showSmartInputSheet(context)),
+              _heroAction(Icons.receipt_long_outlined, 'Scan struk',
+                  () => showSmartInputSheet(context, start: SmartInputStart.receipt)),
+              _heroAction(Icons.edit_note_rounded, 'Manual', () => openQuickAddModal(context)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroStat(String label, String value, {String? sub}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 11.5,
+            color: Colors.white.withValues(alpha: 0.65),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(value, style: Ui.amount(size: 15, color: Colors.white)),
+        if (sub != null)
+          Text(
+            sub,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.55),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _heroAction(IconData icon, String label, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: Colors.white, size: 20),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Tagihan dekat jatuh tempo ────────────────────────────────────────────
+  Widget _buildUpcomingBills(List<RecurringBill> bills) {
+    final now = DateTime.now();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          'Tagihan minggu ini',
+          actionLabel: 'Semua',
+          onAction: () => context.push(AppRoutes.bills),
+        ),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (final (i, b) in bills.take(4).indexed) ...[
+                if (i > 0) const Divider(height: 1, indent: 16),
+                ListRow(
+                  title: b.name,
+                  subtitle: () {
+                    final d = b.daysUntilDue(now);
+                    final when = d < 0
+                        ? 'lewat ${-d} hari'
+                        : d == 0
+                        ? 'hari ini'
+                        : d == 1
+                        ? 'besok'
+                        : '$d hari lagi';
+                    return '${b.amount.toRupiah} · $when';
+                  }(),
+                  trailing: TextButton(
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(recurringBillsProvider.notifier)
+                            .markPaid(b);
+                        if (mounted) {
+                          AppTheme.showSuccessSnackBar(
+                            context,
+                            '${b.name} dicatat lunas.',
+                          );
+                        }
+                      } catch (_) {
+                        if (mounted) {
+                          AppTheme.showErrorSnackBar(
+                            context,
+                            'Gagal mencatat pembayaran.',
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Sudah bayar'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Dompet ───────────────────────────────────────────────────────────────
+  Widget _buildWalletsStrip() {
+    final wallets = ref.watch(walletsProvider).value ?? const [];
+    if (wallets.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeader(
+            'Dompet',
+            actionLabel: 'Kelola',
+            onAction: () => context.push(AppRoutes.wallets),
+          ),
+          SizedBox(
+            height: 76,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: wallets.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final w = wallets[i];
+                return SizedBox(
+                  width: 150,
+                  child: AppCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    onTap: () => context.push(AppRoutes.wallets),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Row(
                           children: [
-                            Expanded(
-                              child: Text(
-                                'Safe Spending Hari Ini',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: w.displayColor,
+                                shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 1.5),
-                              decoration: BoxDecoration(
-                                color: summary.safeSpendingToday > 0
-                                    ? const Color(0xFF86EFAC).withValues(alpha: 0.2)
-                                    : const Color(0xFFFDE047).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
+                            Expanded(
                               child: Text(
-                                summary.safeSpendingToday > 0
-                                    ? 'Sisa Hari Ini'
-                                    : (summary.variableSpentToday > 0
-                                        ? 'Hari Ini Habis'
-                                        : 'Belum Diset'),
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: summary.safeSpendingToday > 0
-                                      ? const Color(0xFF86EFAC)
-                                      : const Color(0xFFFDE047),
-                                ),
+                                w.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Ui.body(size: 12.5),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 3),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              summary.safeSpendingToday > 0
-                                  ? summary.safeSpendingToday.toRupiah
-                                  : 'Rp0',
-                              style: AppTheme.monoCurrency(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                summary.safeSpendingToday > 0
-                                    ? 'Jatah ${summary.dailyQuotaToday.toRupiahCompact}/hari'
-                                    : (summary.daysRemainingInMonth > 1
-                                        ? 'Mulai besok: ${summary.dailyQuotaTomorrow.toRupiahCompact}/hr'
-                                        : 'Terpakai ${summary.variableSpentToday.toRupiahCompact}'),
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.right,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 4),
+                        Text(
+                          _isBalanceVisible
+                              ? (w.balance < 0
+                                    ? '-${w.balance.abs().toRupiah}'
+                                    : w.balance.toRupiah)
+                              : 'Rp ••••',
+                          style: Ui.amount(size: 14.5),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
-          ],
-
-          const SizedBox(height: 18),
-
-          // 4 Circular Quick Action Buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: _buildCircularAction(
-                  icon: Icons.arrow_outward_rounded,
-                  label: 'Catat Keluar',
-                  onTap: () =>
-                      _openAddTransaction(context, TransactionType.expense),
-                ),
-              ),
-              Expanded(
-                child: _buildCircularAction(
-                  icon: Icons.add_rounded,
-                  label: 'Catat Masuk',
-                  onTap: () =>
-                      _openAddTransaction(context, TransactionType.income),
-                ),
-              ),
-              Expanded(
-                child: _buildCircularAction(
-                  icon: Icons.account_balance_wallet_rounded,
-                  label: 'Alokasi Gaji',
-                  onTap: () => context.go(AppRoutes.salary),
-                ),
-              ),
-              Expanded(
-                child: _buildCircularAction(
-                  icon: Icons.pie_chart_rounded,
-                  label: 'Laporan',
-                  onTap: () => context.push(AppRoutes.reports),
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCircularAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.25),
-                width: 1,
-              ),
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: GoogleFonts.dmSans(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.9),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── 2. Quick Stats Overview (Dual-Mode: Allocation vs Actual Cashflow) ───
   Widget _buildQuickStats(DashboardSummary summary) {
     final bool hasAllocation = summary.hasBudgetAllocation;
 
-    final String firstLabel =
-        hasAllocation ? 'Total Alokasi' : 'Total Pemasukan';
+    final String firstLabel = hasAllocation
+        ? 'Total Alokasi'
+        : 'Total Pemasukan';
     final String firstAmount = hasAllocation
         ? summary.totalAllocated.toRupiahCompact
         : summary.totalIncome.toRupiahCompact;
@@ -604,17 +633,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final Color firstColor = AppTheme.success;
     final Color firstBg = AppTheme.pastelGreen;
 
-    final bool showSavedPrimary = hasAllocation && summary.totalSavedInBudget > 0 && summary.totalBudgetSpent == 0;
+    final bool showSavedPrimary =
+        hasAllocation &&
+        summary.totalSavedInBudget > 0 &&
+        summary.totalBudgetSpent == 0;
 
     final String secondLabel = hasAllocation
         ? (showSavedPrimary ? 'Tabungan' : 'Total Terpakai')
         : 'Pengeluaran';
     final String secondAmount = hasAllocation
-        ? (showSavedPrimary ? summary.totalSavedInBudget.toRupiahCompact : summary.totalBudgetSpent.toRupiahCompact)
+        ? (showSavedPrimary
+              ? summary.totalSavedInBudget.toRupiahCompact
+              : summary.totalBudgetSpent.toRupiahCompact)
         : summary.totalExpense.toRupiahCompact;
-    final IconData secondIcon = showSavedPrimary ? Icons.savings_outlined : Icons.arrow_outward_rounded;
-    final Color secondColor = showSavedPrimary ? AppTheme.primary : AppTheme.danger;
-    final Color secondBg = showSavedPrimary ? AppTheme.pastelBlue : AppTheme.pastelRed;
+    final IconData secondIcon = showSavedPrimary
+        ? Icons.savings_outlined
+        : Icons.arrow_outward_rounded;
+    final Color secondColor = showSavedPrimary
+        ? AppTheme.primary
+        : AppTheme.danger;
+    final Color secondBg = showSavedPrimary
+        ? AppTheme.pastelBlue
+        : AppTheme.pastelRed;
 
     return IntrinsicHeight(
       child: Row(
@@ -629,7 +669,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: firstBg,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
                     child: Icon(firstIcon, color: firstColor, size: 18),
                   ),
@@ -678,7 +720,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: secondBg,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
                     child: Icon(secondIcon, color: secondColor, size: 18),
                   ),
@@ -706,11 +750,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             color: showSavedPrimary
                                 ? AppTheme.primary
                                 : ((hasAllocation
-                                            ? summary.totalBudgetSpent
-                                            : summary.totalExpense) >
-                                        0
-                                    ? AppTheme.danger
-                                    : AppTheme.textDarkPrimary),
+                                              ? summary.totalBudgetSpent
+                                              : summary.totalExpense) >
+                                          0
+                                      ? AppTheme.danger
+                                      : AppTheme.textDarkPrimary),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -790,8 +834,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primary,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
@@ -872,8 +918,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
-                    onPressed: () => _openAddTransaction(
-                        context, TransactionType.expense),
+                    onPressed: () =>
+                        _openAddTransaction(context, TransactionType.expense),
                     icon: const Icon(Icons.add_rounded, size: 16),
                     label: const Text('Catat Pengeluaran'),
                   ),
@@ -896,12 +942,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 onTap: () => _openAddTransaction(
                   context,
                   TransactionType.expense,
-                  initialCategoryId:
-                      cat.categoryId == 'uncategorized' ? null : cat.categoryId,
+                  initialCategoryId: cat.categoryId == 'uncategorized'
+                      ? null
+                      : cat.categoryId,
                 ),
                 child: CloudPulseCard(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1021,7 +1070,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               child: Text(
                 'Lihat Semua',
                 style: GoogleFonts.dmSans(
-                    fontSize: 12, fontWeight: FontWeight.w600),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -1033,8 +1084,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             child: Center(
               child: Column(
                 children: [
-                  Icon(Icons.tune_rounded,
-                      size: 36, color: AppTheme.textDarkMuted),
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 36,
+                    color: AppTheme.textDarkMuted,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Belum Ada Budget Kategori',
@@ -1048,7 +1102,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   Text(
                     'Input gaji untuk membuat alokasi otomatis',
                     style: GoogleFonts.dmSans(
-                        fontSize: 12, color: AppTheme.textDarkSecondary),
+                      fontSize: 12,
+                      color: AppTheme.textDarkSecondary,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
@@ -1071,12 +1127,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               final isDebt = budget.isDebt;
               final isOverBudget = budget.isOverBudget && !isSavings;
               final pct = (budget.spentPercentage * 100).toStringAsFixed(0);
-              final isSavedFull = isSavings && budget.spentAmount >= budget.allocatedAmount;
+              final isSavedFull =
+                  isSavings && budget.spentAmount >= budget.allocatedAmount;
 
               // Daily limit & Today's spending for variable expense categories
               final isDailyTrackable = budget.isDailyTrackable;
-              final int spentToday = summary.spentTodayByCat[budget.categoryId] ?? 0;
-              final int remainingBeforeToday = budget.remainingAmount + spentToday;
+              final int spentToday =
+                  summary.spentTodayByCat[budget.categoryId] ?? 0;
+              final int remainingBeforeToday =
+                  budget.remainingAmount + spentToday;
               final int dailyQuotaToday = daysRemaining > 0
                   ? (remainingBeforeToday / daysRemaining).floor()
                   : 0;
@@ -1089,42 +1148,44 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               final IconData catIcon = isSavings
                   ? Icons.savings_outlined
                   : (isDebt
-                      ? Icons.credit_card_outlined
-                      : (isOverBudget
-                          ? Icons.warning_amber_rounded
-                          : Icons.folder_outlined));
+                        ? Icons.credit_card_outlined
+                        : (isOverBudget
+                              ? Icons.warning_amber_rounded
+                              : Icons.folder_outlined));
               final Color catColor = isSavings
                   ? AppTheme.primary
                   : (isDebt
-                      ? AppTheme.warning
-                      : (isOverBudget ? AppTheme.danger : AppTheme.primary));
+                        ? AppTheme.warning
+                        : (isOverBudget ? AppTheme.danger : AppTheme.primary));
               final Color catBg = isSavings
                   ? AppTheme.pastelBlue
                   : (isDebt
-                      ? AppTheme.pastelAmber
-                      : (isOverBudget ? AppTheme.pastelRed : AppTheme.pastelBlue));
+                        ? AppTheme.pastelAmber
+                        : (isOverBudget
+                              ? AppTheme.pastelRed
+                              : AppTheme.pastelBlue));
 
               return InkWell(
                 borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
                 onTap: () {
                   final initialAmount = budget.categoryIsFixed
                       ? (budget.remainingAmount > 0
-                          ? budget.remainingAmount
-                          : budget.allocatedAmount)
+                            ? budget.remainingAmount
+                            : budget.allocatedAmount)
                       : null;
 
-                  showDialog(
-                    context: context,
-                    builder: (_) => AddTransactionDialog(
-                      initialType: TransactionType.expense,
-                      initialCategoryId: budget.categoryId,
-                      initialAmount: initialAmount,
-                    ),
+                  showAddTransaction(
+                    context,
+                    type: TransactionType.expense,
+                    categoryId: budget.categoryId,
+                    amount: initialAmount,
                   );
                 },
                 child: CloudPulseCard(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1137,11 +1198,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               color: catBg,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              catIcon,
-                              size: 15,
-                              color: catColor,
-                            ),
+                            child: Icon(catIcon, size: 15, color: catColor),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -1168,13 +1225,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       fontSize: 11.5,
                                       color: isSavings
                                           ? (isSavedFull
-                                              ? AppTheme.success
-                                              : AppTheme.primary)
+                                                ? AppTheme.success
+                                                : AppTheme.primary)
                                           : (budget.spentAmount > 0
-                                              ? (isOverBudget
-                                                  ? AppTheme.danger
-                                                  : AppTheme.textDarkPrimary)
-                                              : AppTheme.textDarkPrimary),
+                                                ? (isOverBudget
+                                                      ? AppTheme.danger
+                                                      : AppTheme
+                                                            .textDarkPrimary)
+                                                : AppTheme.textDarkPrimary),
                                       fontWeight: isSavings
                                           ? FontWeight.w700
                                           : FontWeight.w600,
@@ -1204,13 +1262,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           valueColor: AlwaysStoppedAnimation<Color>(
                             isSavings
                                 ? (isSavedFull
-                                    ? AppTheme.success
-                                    : AppTheme.primary)
+                                      ? AppTheme.success
+                                      : AppTheme.primary)
                                 : (isOverBudget
-                                    ? AppTheme.danger
-                                    : budget.spentPercentage > 0.8
-                                        ? AppTheme.warning
-                                        : AppTheme.primary),
+                                      ? AppTheme.danger
+                                      : budget.spentPercentage > 0.8
+                                      ? AppTheme.warning
+                                      : AppTheme.primary),
                           ),
                         ),
                       ),
@@ -1221,16 +1279,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           Text(
                             isSavings
                                 ? '$pct% tersimpan'
-                                : (isDebt ? '$pct% terbayar' : '$pct% terpakai'),
+                                : (isDebt
+                                      ? '$pct% terbayar'
+                                      : '$pct% terpakai'),
                             style: GoogleFonts.dmSans(
                               fontSize: 11,
                               color: isSavings
                                   ? (isSavedFull
-                                      ? AppTheme.success
-                                      : AppTheme.primary)
+                                        ? AppTheme.success
+                                        : AppTheme.primary)
                                   : (isOverBudget
-                                      ? AppTheme.danger
-                                      : AppTheme.textDarkSecondary),
+                                        ? AppTheme.danger
+                                        : AppTheme.textDarkSecondary),
                               fontWeight: (isOverBudget || isSavedFull)
                                   ? FontWeight.w600
                                   : FontWeight.normal,
@@ -1241,25 +1301,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             child: Text(
                               isSavings
                                   ? (isSavedFull
-                                      ? 'Target Terkumpul ✨'
-                                      : 'Sisa target: ${budget.remainingAmount.toRupiah}')
+                                        ? 'Target Terkumpul ✨'
+                                        : 'Sisa target: ${budget.remainingAmount.toRupiah}')
                                   : (isDebt
-                                      ? (budget.remainingAmount <= 0
-                                          ? 'Lunas ✨'
-                                          : 'Sisa: ${budget.remainingAmount.toRupiah}')
-                                      : (isOverBudget
-                                          ? 'Over Budget!'
-                                          : 'Sisa: ${budget.remainingAmount.toRupiah}')),
+                                        ? (budget.remainingAmount <= 0
+                                              ? 'Lunas ✨'
+                                              : 'Sisa: ${budget.remainingAmount.toRupiah}')
+                                        : (isOverBudget
+                                              ? 'Over Budget!'
+                                              : 'Sisa: ${budget.remainingAmount.toRupiah}')),
                               textAlign: TextAlign.end,
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 color: isSavings
                                     ? (isSavedFull
-                                        ? AppTheme.success
-                                        : AppTheme.primary)
+                                          ? AppTheme.success
+                                          : AppTheme.primary)
                                     : (isOverBudget
-                                        ? AppTheme.danger
-                                        : AppTheme.success),
+                                          ? AppTheme.danger
+                                          : AppTheme.success),
                                 fontWeight: FontWeight.w500,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -1273,7 +1333,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       if (isSavings)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.pastelBlue,
                             borderRadius: BorderRadius.circular(4),
@@ -1281,8 +1343,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.savings_rounded,
-                                  size: 12, color: AppTheme.primary),
+                              const Icon(
+                                Icons.savings_rounded,
+                                size: 12,
+                                color: AppTheme.primary,
+                              ),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
@@ -1302,7 +1367,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       else if (isDebt)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.pastelAmber,
                             borderRadius: BorderRadius.circular(4),
@@ -1310,8 +1377,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.credit_card_outlined,
-                                  size: 12, color: AppTheme.warning),
+                              const Icon(
+                                Icons.credit_card_outlined,
+                                size: 12,
+                                color: AppTheme.warning,
+                              ),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
@@ -1341,33 +1411,50 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
                             if (isOverBudget) {
                               badgeBg = AppTheme.pastelRed;
-                              badgeBorder = AppTheme.danger.withValues(alpha: 0.3);
+                              badgeBorder = AppTheme.danger.withValues(
+                                alpha: 0.3,
+                              );
                               badgeText = AppTheme.danger;
                               badgeIcon = Icons.warning_amber_rounded;
                               badgeLabel = 'Over Budget!';
-                              tooltipMsg = 'Pengeluaran telah melebihi budget bulanan sebesar ${(budget.spentAmount - budget.allocatedAmount).toRupiah}';
+                              tooltipMsg =
+                                  'Pengeluaran telah melebihi budget bulanan sebesar ${(budget.spentAmount - budget.allocatedAmount).toRupiah}';
                             } else if (spentToday == 0) {
-                              badgeBg = AppTheme.primary.withValues(alpha: 0.08);
-                              badgeBorder = AppTheme.primary.withValues(alpha: 0.2);
+                              badgeBg = AppTheme.primary.withValues(
+                                alpha: 0.08,
+                              );
+                              badgeBorder = AppTheme.primary.withValues(
+                                alpha: 0.2,
+                              );
                               badgeText = AppTheme.primary;
                               badgeIcon = Icons.today_rounded;
-                              badgeLabel = 'Jatah hari ini: ${dailyQuotaToday.toRupiah}';
-                              tooltipMsg = 'Jatah aman belanja hari ini: ${dailyQuotaToday.toRupiah} (tersisa $daysRemaining hari)';
-                            } else if (spentToday > 0 && remainingDailyQuota > 0) {
+                              badgeLabel =
+                                  'Jatah hari ini: ${dailyQuotaToday.toRupiah}';
+                              tooltipMsg =
+                                  'Jatah aman belanja hari ini: ${dailyQuotaToday.toRupiah} (tersisa $daysRemaining hari)';
+                            } else if (spentToday > 0 &&
+                                remainingDailyQuota > 0) {
                               badgeBg = AppTheme.pastelGreen;
-                              badgeBorder = AppTheme.success.withValues(alpha: 0.3);
+                              badgeBorder = AppTheme.success.withValues(
+                                alpha: 0.3,
+                              );
                               badgeText = AppTheme.success;
                               badgeIcon = Icons.check_circle_outline_rounded;
-                              badgeLabel = 'Sisa hari ini: ${remainingDailyQuota.toRupiah}';
-                              tooltipMsg = 'Terpakai ${spentToday.toRupiah} hari ini (dari jatah ${dailyQuotaToday.toRupiah}). Mulai besok: ${dailyQuotaTomorrow.toRupiah}/hari';
+                              badgeLabel =
+                                  'Sisa hari ini: ${remainingDailyQuota.toRupiah}';
+                              tooltipMsg =
+                                  'Terpakai ${spentToday.toRupiah} hari ini (dari jatah ${dailyQuotaToday.toRupiah}). Mulai besok: ${dailyQuotaTomorrow.toRupiah}/hari';
                             } else {
                               // Kuota hari ini sudah habis
                               badgeBg = AppTheme.pastelOrange;
-                              badgeBorder = AppTheme.warning.withValues(alpha: 0.4);
+                              badgeBorder = AppTheme.warning.withValues(
+                                alpha: 0.4,
+                              );
                               badgeText = const Color(0xFFD97706);
                               badgeIcon = Icons.info_outline_rounded;
                               badgeLabel = 'Jatah hari ini habis';
-                              tooltipMsg = 'Hari ini sudah terpakai ${spentToday.toRupiah}. Jatah aman mulai besok: ${dailyQuotaTomorrow.toRupiah}/hari ($daysRemaining hari tersisa)';
+                              tooltipMsg =
+                                  'Hari ini sudah terpakai ${spentToday.toRupiah}. Jatah aman mulai besok: ${dailyQuotaTomorrow.toRupiah}/hari ($daysRemaining hari tersisa)';
                             }
 
                             return Tooltip(
@@ -1376,21 +1463,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               preferBelow: false,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
                                 decoration: BoxDecoration(
                                   color: badgeBg,
-                                  borderRadius:
-                                      BorderRadius.circular(AppTheme.radiusMedium),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusMedium,
+                                  ),
                                   border: Border.all(color: badgeBorder),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      badgeIcon,
-                                      size: 13,
-                                      color: badgeText,
-                                    ),
+                                    Icon(badgeIcon, size: 13, color: badgeText),
                                     const SizedBox(width: 5),
                                     Flexible(
                                       child: Text(
@@ -1419,8 +1505,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       else if (budget.categoryIsFixed)
                         Row(
                           children: [
-                            Icon(Icons.push_pin_rounded,
-                                size: 12, color: AppTheme.textDarkMuted),
+                            Icon(
+                              Icons.push_pin_rounded,
+                              size: 12,
+                              color: AppTheme.textDarkMuted,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Biaya Tetap',
@@ -1466,7 +1555,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               child: Text(
                 'Lihat Semua',
                 style: GoogleFonts.dmSans(
-                    fontSize: 12, fontWeight: FontWeight.w600),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -1500,20 +1591,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               final Color iconColor = isSavings
                   ? AppTheme.primary
                   : (isDebt
-                      ? AppTheme.warning
-                      : (isExpense ? AppTheme.danger : AppTheme.success));
+                        ? AppTheme.warning
+                        : (isExpense ? AppTheme.danger : AppTheme.success));
               final Color iconBg = isSavings
                   ? AppTheme.pastelBlue
                   : (isDebt
-                      ? AppTheme.pastelAmber
-                      : (isExpense ? AppTheme.pastelRed : AppTheme.pastelGreen));
+                        ? AppTheme.pastelAmber
+                        : (isExpense
+                              ? AppTheme.pastelRed
+                              : AppTheme.pastelGreen));
               final IconData icon = isSavings
                   ? Icons.savings_outlined
                   : (isDebt
-                      ? Icons.credit_card_outlined
-                      : (isExpense
-                          ? Icons.arrow_outward_rounded
-                          : Icons.arrow_downward_rounded));
+                        ? Icons.credit_card_outlined
+                        : (isExpense
+                              ? Icons.arrow_outward_rounded
+                              : Icons.arrow_downward_rounded));
 
               final String prefix = isSavings ? '📥 ' : (isExpense ? '-' : '+');
               final Color amountColor = isSavings
@@ -1531,11 +1624,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         color: iconBg,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        icon,
-                        size: 18,
-                        color: iconColor,
-                      ),
+                      child: Icon(icon, size: 18, color: iconColor),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1543,13 +1632,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            tx.description != null &&
-                                    tx.description!.isNotEmpty
+                            tx.description != null && tx.description!.isNotEmpty
                                 ? tx.description!
                                 : (tx.categoryName ??
-                                    (isSavings
-                                        ? 'Tabungan / Simpanan'
-                                        : (isExpense ? 'Pengeluaran' : 'Pemasukan'))),
+                                      (isSavings
+                                          ? 'Tabungan / Simpanan'
+                                          : (isExpense
+                                                ? 'Pengeluaran'
+                                                : 'Pemasukan'))),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -1573,7 +1663,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         '$prefix${tx.amount.toRupiah}',
                         style: AppTheme.monoCurrency(
                           fontSize: 14,
-                          fontWeight: isSavings ? FontWeight.w700 : FontWeight.w600,
+                          fontWeight: isSavings
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                           color: amountColor,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -1589,103 +1681,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  void _openAddTransaction(BuildContext context, TransactionType type,
-      {String? initialCategoryId, int? initialAmount}) {
-    showDialog(
-      context: context,
-      builder: (_) => AddTransactionDialog(
-        initialType: type,
-        initialCategoryId: initialCategoryId,
-        initialAmount: initialAmount,
-      ),
+  void _openAddTransaction(
+    BuildContext context,
+    TransactionType type, {
+    String? initialCategoryId,
+    int? initialAmount,
+  }) {
+    showAddTransaction(
+      context,
+      type: type,
+      categoryId: initialCategoryId,
+      amount: initialAmount,
     );
   }
 
-  void _openPeriodPicker(BuildContext context) {
-    final current = ref.read(selectedPeriodProvider);
-    int month = current.month;
-    int year = current.year;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Pilih Periode',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-        ),
-        content: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: AppDropdownFormField<int>(
-                value: month,
-                labelText: 'Bulan',
-                prefixIcon: const Icon(Icons.calendar_month_outlined,
-                    size: 20, color: AppTheme.primary),
-                items: List.generate(12, (i) => i + 1).map((m) {
-                  const months = [
-                    'Januari',
-                    'Februari',
-                    'Maret',
-                    'April',
-                    'Mei',
-                    'Juni',
-                    'Juli',
-                    'Agustus',
-                    'September',
-                    'Oktober',
-                    'November',
-                    'Desember',
-                  ];
-                  return DropdownMenuItem(
-                    value: m,
-                    child: Text(
-                      months[m - 1],
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: (v) => month = v ?? month,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: AppDropdownFormField<int>(
-                value: year,
-                labelText: 'Tahun',
-                items: [2024, 2025, 2026, 2027, 2028].map((y) {
-                  return DropdownMenuItem(
-                    value: y,
-                    child: Text(
-                      '$y',
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (v) => year = v ?? year,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(selectedPeriodProvider.notifier).state =
-                  (month: month, year: year);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Terapkan'),
-          ),
-        ],
-      ),
+  Future<void> _openPeriodPicker(BuildContext context) async {
+    final picked = await showPeriodPicker(
+      context,
+      ref.read(selectedPeriodProvider),
     );
+    if (picked != null) {
+      ref.read(selectedPeriodProvider.notifier).state = picked;
+    }
   }
 
   String _getCurrentPeriod(({int month, int year}) period) {
