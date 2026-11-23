@@ -502,7 +502,7 @@ class _TxRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(
+            Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: Text(
               '${isTransfer ? '' : (isIncome ? '+' : '−')}${tx.amount.toRupiah}',
               style: Ui.amount(
                 size: 14,
@@ -510,7 +510,7 @@ class _TxRow extends StatelessWidget {
                     ? const Color(0xFF059669)
                     : AppTheme.textDarkPrimary,
               ),
-            ),
+            ))),
             PopupMenuButton<String>(
               tooltip: 'Opsi',
               icon: const Icon(
