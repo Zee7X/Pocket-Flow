@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Sisa uang aman dibelanjakan hari ini</string>
+    <string name="capture_service_label">Deteksi transaksi PocketFlow</string>
+    <string name="shortcut_voice_short">Catat suara</string>
+    <string name="shortcut_voice_long">Catat transaksi dengan suara</string>
+    <string name="shortcut_inbox_short">Perlu ditinjau</string>
+</resources>

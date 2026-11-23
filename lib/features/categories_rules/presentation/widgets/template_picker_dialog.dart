@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/widgets/error_state.dart';
 import '../providers/categories_rules_provider.dart';
+import '../../../../core/widgets/app_modal.dart';
 
 class TemplatePickerDialog extends ConsumerStatefulWidget {
   const TemplatePickerDialog({super.key});
@@ -21,7 +22,7 @@ class _TemplatePickerDialogState extends ConsumerState<TemplatePickerDialog> {
   Widget build(BuildContext context) {
     final templatesAsync = ref.watch(categoryTemplatesProvider);
 
-    return AlertDialog(
+    return AppAlertModal(
       backgroundColor: AppTheme.surfaceDark,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
@@ -36,7 +37,7 @@ class _TemplatePickerDialogState extends ConsumerState<TemplatePickerDialog> {
         ),
       ),
       content: SizedBox(
-        width: double.maxFinite,
+        width: double.infinity,
         child: templatesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => AppErrorWidget(
@@ -49,6 +50,7 @@ class _TemplatePickerDialogState extends ConsumerState<TemplatePickerDialog> {
           data: (groups) {
             return ListView.separated(
               shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               itemCount: groups.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (ctx, i) {

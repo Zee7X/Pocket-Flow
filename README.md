@@ -65,6 +65,21 @@ Sebagian besar aplikasi pencatat keuangan konvensional hanya bersifat *reaktif* 
 
 ---
 
+## 🆕 Next Level: pencatatan otomatis
+
+- **Deteksi transaksi dari notifikasi** GoPay, OVO, DANA, ShopeePay, bank, dan SMS bank (Android), masuk ke halaman *Perlu Ditinjau*.
+- **Catat pintar**: ketik bebas, bicara, atau scan struk. Memakai Gemini API (free tier) lewat Supabase Edge Function, dengan pembaca lokal sebagai cadangan.
+- **Import** dari Money Manager, Money Lover, Wallet, dan file CSV/XLSX.
+- Multi-dompet, langganan & tagihan rutin, patungan, insight bulanan, peringatan budget, widget Android, dan mode offline.
+
+Panduan setup (migrasi database, aktivasi AI, izin Android, iPhone): [`docs/NEXT_LEVEL.md`](docs/NEXT_LEVEL.md).
+
+| Dashboard | Perlu Ditinjau | Catat pintar |
+|---|---|---|
+| <img src="docs/screenshots/after-dashboard.png" width="240"/> | <img src="docs/screenshots/after-inbox.png" width="240"/> | <img src="docs/screenshots/after-smart-result.png" width="240"/> |
+
+---
+
 ## 🎨 Desain Antarmuka (Modern Neo-Banking UX)
 
 PocketFlow dirancang dengan estetika **Clean Light Neo-Banking**:
@@ -78,8 +93,8 @@ PocketFlow dirancang dengan estetika **Clean Light Neo-Banking**:
 ## 🚀 Memulai Proyek
 
 ### Prasyarat
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) (versi 3.22 atau lebih baru)
-- Dart SDK (versi 3.4 atau lebih baru)
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) (versi 3.38 atau lebih baru)
+- Dart SDK (versi 3.10 atau lebih baru)
 - Browser Chrome (untuk menjalankan versi Web) atau Android Studio / Xcode (untuk menjalankan versi Mobile)
 
 ### Instalasi & Menjalankan Aplikasi

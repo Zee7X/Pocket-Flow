@@ -26,7 +26,7 @@ class CloudPulseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? AppTheme.radiusLarge;
+    final radius = borderRadius ?? 16.0;
 
     Widget card = Container(
       margin: margin,
@@ -34,8 +34,8 @@ class CloudPulseCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor ?? AppTheme.surfaceLight,
         borderRadius: BorderRadius.circular(radius),
-        border: border ?? Border.all(color: AppTheme.borderLightSubtle),
-        boxShadow: customShadow ?? AppTheme.cardShadow,
+        border: border ?? Border.all(color: const Color(0xFFE6EAF0)),
+        boxShadow: customShadow,
       ),
       child: child,
     );

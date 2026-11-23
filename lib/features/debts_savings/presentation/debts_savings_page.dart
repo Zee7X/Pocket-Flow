@@ -16,6 +16,7 @@ import 'widgets/add_debt_dialog.dart';
 import 'widgets/add_savings_goal_dialog.dart';
 import 'widgets/record_payment_dialog.dart';
 import 'widgets/record_savings_dialog.dart';
+import '../../../core/widgets/app_modal.dart';
 
 class DebtsSavingsPage extends ConsumerStatefulWidget {
   const DebtsSavingsPage({super.key});
@@ -585,9 +586,9 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
   }
 
   Future<void> _deleteGoal(SavingsGoal goal) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppModal<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => AppAlertModal(
         backgroundColor: AppTheme.surfaceLight,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusXL),
@@ -645,9 +646,9 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
   }
 
   Future<void> _deleteDebt(Debt debt) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppModal<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => AppAlertModal(
         backgroundColor: AppTheme.surfaceLight,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusXL),
@@ -705,28 +706,28 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
   }
 
   void _openAddSavingsGoal(BuildContext context) {
-    showDialog(
+    showAppModal(
       context: context,
       builder: (_) => const AddSavingsGoalDialog(),
     );
   }
 
   void _openRecordSavings(BuildContext context, SavingsGoal goal) {
-    showDialog(
+    showAppModal(
       context: context,
       builder: (_) => RecordSavingsDialog(goal: goal),
     );
   }
 
   void _openAddDebt(BuildContext context) {
-    showDialog(
+    showAppModal(
       context: context,
       builder: (_) => const AddDebtDialog(),
     );
   }
 
   void _openRecordPayment(BuildContext context, Debt debt) {
-    showDialog(
+    showAppModal(
       context: context,
       builder: (_) => RecordPaymentDialog(debt: debt),
     );

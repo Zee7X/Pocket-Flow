@@ -16,6 +16,7 @@ import 'providers/categories_rules_provider.dart';
 import 'widgets/add_category_dialog.dart';
 import 'widgets/add_rule_dialog.dart';
 import 'widgets/template_picker_dialog.dart';
+import '../../../core/widgets/app_modal.dart';
 
 class CategoriesRulesPage extends ConsumerStatefulWidget {
   const CategoriesRulesPage({super.key});
@@ -532,11 +533,11 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
   }
 
   void _openTemplatePicker(BuildContext context) {
-    showDialog(context: context, builder: (_) => const TemplatePickerDialog());
+    showAppModal(context: context, builder: (_) => const TemplatePickerDialog());
   }
 
   void _openAddCategory(BuildContext context) {
-    showDialog(context: context, builder: (_) => const AddCategoryDialog());
+    showAppModal(context: context, builder: (_) => const AddCategoryDialog());
   }
 
   void _openAddRule(BuildContext context, List<Category> categories) {
@@ -544,7 +545,7 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
       AppTheme.showErrorSnackBar(context, 'Buat kategori terlebih dahulu');
       return;
     }
-    showDialog(
+    showAppModal(
       context: context,
       builder: (_) => AddRuleDialog(categories: categories),
     );
@@ -552,7 +553,7 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
 
   void _openEditRule(
       BuildContext context, List<Category> categories, AllocationRule rule) {
-    showDialog(
+    showAppModal(
       context: context,
       builder: (_) => AddRuleDialog(
         categories: categories,
@@ -562,9 +563,9 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
   }
 
   Future<void> _deleteCategory(Category cat) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppModal<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => AppAlertModal(
         backgroundColor: AppTheme.surfaceLight,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusXL),

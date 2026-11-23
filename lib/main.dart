@@ -9,6 +9,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'app/app.dart';
 import 'core/constants/supabase_constants.dart';
 import 'core/notifications/notification_service.dart';
+import 'core/storage/local_store.dart';
 import 'core/widgets/error_state.dart';
 
 Future<void> main() async {
@@ -79,9 +80,20 @@ Future<void> main() async {
     ),
   );
 
+  // Penyimpanan lokal untuk cache offline, antrean sinkron, dan pengaturan.
+  LocalStore? store;
+  try {
+    store = await createLocalStore();
+  } catch (e) {
+    debugPrint('LocalStore init error: $e');
+  }
+
   runApp(
-    const ProviderScope(
-      child: PocketFlowApp(),
+    ProviderScope(
+      overrides: [
+        if (store != null) localStoreProvider.overrideWithValue(store),
+      ],
+      child: const PocketFlowApp(),
     ),
   );
 }

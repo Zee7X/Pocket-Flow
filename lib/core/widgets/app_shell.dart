@@ -1,209 +1,247 @@
 // lib/core/widgets/app_shell.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:flutter/services.dart';
-
 import '../../app/router.dart';
 import '../../app/theme.dart';
+import '../../features/alerts/budget_alerts.dart';
+import '../../features/capture/presentation/providers/capture_provider.dart';
+import '../../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../../features/smart/presentation/smart_input_sheet.dart';
+import '../../features/splits/presentation/splits_page.dart';
 import '../../features/transactions/domain/transaction.dart';
 import '../../features/transactions/presentation/widgets/add_transaction_dialog.dart';
+import '../../features/wallets/presentation/wallets_page.dart';
+import 'app_modal.dart';
+import 'ui.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const AppShell({super.key, required this.navigationShell});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   DateTime? _lastBackPressTime;
+  StreamSubscription<void>? _capturedSub;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final channel = ref.read(captureChannelProvider);
+    if (channel.isSupported) {
+      _capturedSub = channel.onCaptured.listen((_) => _drainCaptured());
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // Sinkronkan daftar aplikasi yang dibaca ke layanan native.
+        await channel.setAllowedPackages(
+          ref.read(captureSettingsProvider).allowedPackages,
+        );
+        _drainCaptured();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _capturedSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _drainCaptured();
+  }
+
+  Future<void> _drainCaptured() async {
+    try {
+      await ref.read(pendingCapturesProvider.notifier).drainNative();
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
     final currentIndex = widget.navigationShell.currentIndex;
+
+    // Peringatan budget real-time sebagai snackbar.
+    ref.listen<BudgetAlert?>(lastBudgetAlertProvider, (_, alert) {
+      if (alert == null) return;
+      alert.percent >= 100
+          ? AppTheme.showErrorSnackBar(context, alert.message)
+          : AppTheme.showSuccessSnackBar(context, alert.message);
+      ref.read(lastBudgetAlertProvider.notifier).state = null;
+    });
+
+    // Data widget layar utama Android ("Sisa aman hari ini").
+    ref.listen<AsyncValue<DashboardSummary>>(dashboardSummaryProvider, (
+      _,
+      next,
+    ) {
+      final s = next.value;
+      if (s == null) return;
+      ref
+          .read(captureChannelProvider)
+          .updateWidget(
+            safeToday: s.safeSpendingToday,
+            spentToday: s.totalSpentToday,
+            dailyQuota: s.dailyQuotaToday,
+          );
+    });
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-        // 1. Jika sedang di tab selain Home, slide back akan kembali ke Home lebih dulu
         if (widget.navigationShell.currentIndex != 0) {
           widget.navigationShell.goBranch(0);
           return;
         }
 
-        // 2. Jika sudah di Home, tampilkan peringatan double-back agar tidak tertutup tidak sengaja
         final now = DateTime.now();
         if (_lastBackPressTime == null ||
             now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.info_outline_rounded,
-                      color: Colors.white, size: 18),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Slide sekali lagi untuk keluar dari aplikasi',
-                    style: GoogleFonts.dmSans(
-                        color: Colors.white, fontSize: 13),
-                  ),
-                ],
+              content: Text(
+                'Tekan kembali sekali lagi untuk keluar',
+                style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13),
               ),
-              backgroundColor:
-                  AppTheme.textDarkPrimary.withValues(alpha: 0.92),
+              backgroundColor: AppTheme.textDarkPrimary,
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppTheme.radiusMedium),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
               ),
-              margin: const EdgeInsets.symmetric(
-                  horizontal: 24, vertical: 16),
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             ),
           );
           return;
         }
-
-        // Keluar dari aplikasi jika slide back 2x berturut-turut dalam 2 detik
         await SystemNavigator.pop();
       },
       child: Scaffold(
         backgroundColor: AppTheme.canvasLight,
         body: widget.navigationShell,
-        floatingActionButton: Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: AppTheme.heroGradient,
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.4),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(29),
-              onTap: () => _openQuickAddModal(context),
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
+        floatingActionButton: SizedBox(
+          width: 56,
+          height: 56,
+          child: FloatingActionButton(
+            heroTag: 'shell-add',
+            tooltip: 'Catat',
+            onPressed: () => openQuickAddModal(context),
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            elevation: 2,
+            highlightElevation: 4,
+            shape: const CircleBorder(),
+            child: const Icon(Icons.add_rounded, size: 28),
           ),
         ),
-        floatingActionButtonLocation:
-            FloatingActionButtonLocation.centerDocked,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: BottomAppBar(
           shape: const CircularNotchedRectangle(),
-          notchMargin: 8,
+          notchMargin: 6,
           color: AppTheme.surfaceLight,
-          elevation: 10,
+          elevation: 0,
           surfaceTintColor: Colors.transparent,
-          shadowColor:
-              const Color(0xFF0F172A).withValues(alpha: 0.1),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           height: 64,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left 2 items
-              Row(
-                children: [
-                  _buildNavItem(
-                    context,
-                    index: 0,
-                    icon: Icons.home_rounded,
-                    label: 'Home',
-                    isSelected: currentIndex == 0,
-                  ),
-                  const SizedBox(width: 6),
-                  _buildNavItem(
-                    context,
-                    index: 2,
-                    icon: Icons.receipt_long_rounded,
-                    label: 'Transaksi',
-                    isSelected: currentIndex == 2,
-                  ),
-                ],
-              ),
-
-              // Middle space for floating + button
-              const SizedBox(width: 48),
-
-              // Right 2 items
-              Row(
-                children: [
-                  _buildNavItem(
-                    context,
-                    index: 1,
-                    icon: Icons.account_balance_wallet_rounded,
-                    label: 'Alokasi',
-                    isSelected: currentIndex == 1,
-                  ),
-                  const SizedBox(width: 6),
-                  _buildNavItem(
-                    context,
-                    index: 3,
-                    icon: Icons.savings_rounded,
-                    label: 'Target',
-                    isSelected: currentIndex == 3,
-                  ),
-                ],
-              ),
-            ],
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Ui.border)),
+            ),
+            child: Row(
+              children: [
+                _NavItem(
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  label: 'Home',
+                  selected: currentIndex == 0,
+                  onTap: () => _go(0),
+                ),
+                _NavItem(
+                  icon: Icons.receipt_long_outlined,
+                  activeIcon: Icons.receipt_long_rounded,
+                  label: 'Transaksi',
+                  selected: currentIndex == 2,
+                  onTap: () => _go(2),
+                ),
+                const SizedBox(width: 64),
+                _NavItem(
+                  icon: Icons.pie_chart_outline_rounded,
+                  activeIcon: Icons.pie_chart_rounded,
+                  label: 'Alokasi',
+                  selected: currentIndex == 1,
+                  onTap: () => _go(1),
+                ),
+                _NavItem(
+                  icon: Icons.flag_outlined,
+                  activeIcon: Icons.flag_rounded,
+                  label: 'Target',
+                  selected: currentIndex == 3,
+                  onTap: () => _go(3),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(
-    BuildContext context, {
-    required int index,
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-      onTap: () {
-        widget.navigationShell.goBranch(
-          index,
-          initialLocation: index == widget.navigationShell.currentIndex,
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  void _go(int index) {
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppTheme.primary : AppTheme.textDarkSecondary;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 22,
-              color: isSelected ? AppTheme.primary : AppTheme.textDarkSecondary,
-            ),
+            Icon(selected ? activeIcon : icon, size: 23, color: color),
             const SizedBox(height: 3),
             Text(
               label,
               style: GoogleFonts.dmSans(
                 fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color:
-                    isSelected ? AppTheme.primary : AppTheme.textDarkSecondary,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: color,
               ),
             ),
           ],
@@ -211,148 +249,99 @@ class _AppShellState extends State<AppShell> {
       ),
     );
   }
+}
 
-  void _openQuickAddModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      useSafeArea: false,
-      barrierColor: const Color(0x73000000),
-      backgroundColor: AppTheme.surfaceLight,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXL)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.borderLight,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Aksi Cepat PocketFlow',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textDarkPrimary,
-                ),
-              ),
-              const SizedBox(height: 18),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.pastelRed,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.arrow_outward_rounded,
-                      color: AppTheme.danger, size: 20),
-                ),
-                title: Text(
-                  'Catat Pengeluaran',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppTheme.textDarkPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  'Catat belanja atau tagihan harian',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppTheme.textDarkSecondary),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textDarkMuted),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  showDialog(
-                    context: context,
-                    builder: (_) => const AddTransactionDialog(
-                      initialType: TransactionType.expense,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.pastelGreen,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.arrow_downward_rounded,
-                      color: AppTheme.success, size: 20),
-                ),
-                title: Text(
-                  'Catat Pemasukan',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppTheme.textDarkPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  'Catat bonus, freelance, atau pemasukan lain',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppTheme.textDarkSecondary),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textDarkMuted),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  showDialog(
-                    context: context,
-                    builder: (_) => const AddTransactionDialog(
-                      initialType: TransactionType.income,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.pastelBlue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.account_balance_wallet_rounded,
-                      color: AppTheme.primary, size: 20),
-                ),
-                title: Text(
-                  'Input Alokasi Gaji',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppTheme.textDarkPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  'Kunci dan alokasikan gaji bulanan',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12, color: AppTheme.textDarkSecondary),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textDarkMuted),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.go(AppRoutes.salary);
-                },
-              ),
-            ],
-          ),
+/// Menu aksi cepat dari tombol +.
+void openQuickAddModal(BuildContext context) {
+  showAppModal<void>(
+    context: context,
+    builder: (ctx) {
+      void then(VoidCallback action) {
+        Navigator.of(ctx).pop();
+        // Tunggu sheet tertutup supaya modal berikutnya tidak menumpuk.
+        Future.delayed(const Duration(milliseconds: 220), action);
+      }
+
+      Widget item(
+        IconData icon,
+        Color color,
+        String title,
+        String sub,
+        VoidCallback onTap,
+      ) => ListRow(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+        leading: IconBadge(icon, color: color, size: 40),
+        title: title,
+        subtitle: sub,
+        onTap: () => then(onTap),
+      );
+
+      return AppModalScaffold(
+        title: 'Catat',
+        bodyPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          children: [
+            item(
+              Icons.mic_none_rounded,
+              AppTheme.primary,
+              'Bicara',
+              'Ucapkan saja, langsung tersimpan',
+              () => showVoiceCapture(context),
+            ),
+            item(
+              Icons.auto_awesome_outlined,
+              AppTheme.primary,
+              'Catat pintar',
+              'Ketik atau ucapkan, mis. "kopi 18rb pakai gopay"',
+              () => showSmartInputSheet(context),
+            ),
+            item(
+              Icons.receipt_long_outlined,
+              AppTheme.primary,
+              'Scan struk',
+              'Foto struk atau screenshot bukti bayar',
+              () =>
+                  showSmartInputSheet(context, start: SmartInputStart.receipt),
+            ),
+            const Divider(height: 16),
+            item(
+              Icons.north_east_rounded,
+              AppTheme.textDarkSecondary,
+              'Pengeluaran',
+              'Isi form manual',
+              () => showAddTransaction(context, type: TransactionType.expense),
+            ),
+            item(
+              Icons.south_west_rounded,
+              const Color(0xFF059669),
+              'Pemasukan',
+              'Gaji, bonus, freelance, dan lainnya',
+              () => showAddTransaction(context, type: TransactionType.income),
+            ),
+            item(
+              Icons.swap_horiz_rounded,
+              AppTheme.primary,
+              'Transfer antar dompet',
+              'Top up, tarik tunai, pindah saldo',
+              () => showTransferSheet(context),
+            ),
+            item(
+              Icons.groups_outlined,
+              AppTheme.primary,
+              'Patungan',
+              'Bayarin teman dulu, catat piutangnya',
+              () => showSplitSheet(context),
+            ),
+            item(
+              Icons.account_balance_wallet_outlined,
+              AppTheme.primary,
+              'Alokasi gaji',
+              'Bagi gaji ke pos-pos bulanan',
+              () => context.go(AppRoutes.salary),
+            ),
+          ],
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
 }

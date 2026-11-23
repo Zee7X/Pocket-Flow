@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../app/theme.dart';
 import '../../../core/extensions/currency_extension.dart';
 import '../../../core/widgets/cloudpulse_card.dart';
-import '../../../core/widgets/app_dropdown_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/responsive_center.dart';
@@ -16,6 +15,8 @@ import '../../salary_allocation/presentation/providers/salary_allocation_provide
 import '../../transactions/presentation/providers/transactions_provider.dart';
 import '../domain/monthly_report.dart';
 import 'providers/reports_provider.dart';
+import '../../../core/widgets/period_picker.dart';
+import '../../insights/presentation/widgets/insights_card.dart';
 
 class MonthlyReportsPage extends ConsumerStatefulWidget {
   const MonthlyReportsPage({super.key});
@@ -126,6 +127,9 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
 
                       // ── 4. Category Breakdown Progress List ─────────────────
                       _buildCategoryBreakdown(report),
+
+                      const SizedBox(height: 24),
+                      const InsightsCard(title: 'Insight'),
 
                       const SizedBox(height: 28),
                     ],
@@ -661,75 +665,10 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
 
   Future<void> _openPeriodDialog(
       BuildContext context, ({int month, int year}) current) async {
-    int m = current.month;
-    int y = current.year;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surfaceLight,
-        title: Text(
-          'Pilih Periode Laporan',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-        ),
-        content: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: AppDropdownFormField<int>(
-                value: m,
-                labelText: 'Bulan',
-                prefixIcon: const Icon(Icons.calendar_month_outlined, size: 20, color: AppTheme.primary),
-                items: List.generate(12, (i) => i + 1).map((idx) {
-                  return DropdownMenuItem(
-                    value: idx,
-                    child: Text(
-                      _monthNames[idx - 1],
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w500),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: (val) => m = val ?? m,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: AppDropdownFormField<int>(
-                value: y,
-                labelText: 'Tahun',
-                items: [2024, 2025, 2026, 2027, 2028].map((yr) {
-                  return DropdownMenuItem(
-                    value: yr,
-                    child: Text(
-                      '$yr',
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (val) => y = val ?? y,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(selectedPeriodProvider.notifier).state =
-                  (month: m, year: y);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Tampilkan'),
-          ),
-        ],
-      ),
-    );
+    final picked = await showPeriodPicker(context, current);
+    if (picked != null) {
+      ref.read(reportSelectedPeriodProvider.notifier).state = picked;
+    }
   }
 }
 

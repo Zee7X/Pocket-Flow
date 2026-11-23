@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shortcut saat ikon aplikasi ditekan lama. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="voice"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_voice_short"
+        android:shortcutLongLabel="@string/shortcut_voice_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.pocket_flow"
+            android:targetClass="com.example.pocket_flow.MainActivity"
+            android:data="pocketflow://app/voice" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="inbox"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_inbox_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.pocket_flow"
+            android:targetClass="com.example.pocket_flow.MainActivity"
+            android:data="pocketflow://app/inbox" />
+    </shortcut>
+</shortcuts>

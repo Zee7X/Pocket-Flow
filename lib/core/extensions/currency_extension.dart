@@ -16,9 +16,9 @@ extension CurrencyExtension on int {
   /// Compact format, e.g. 1500000 → "Rp1,5jt"
   String get toRupiahCompact {
     if (this >= 1000000000) {
-      return 'Rp${(this / 1000000000).toStringAsFixed(1)}M';
+      return 'Rp${(this / 1000000000).toStringAsFixed(1).replaceAll('.', ',')}M';
     } else if (this >= 1000000) {
-      return 'Rp${(this / 1000000).toStringAsFixed(1)}jt';
+      return 'Rp${(this / 1000000).toStringAsFixed(1).replaceAll('.', ',')}jt';
     } else if (this >= 1000) {
       return 'Rp${(this / 1000).toStringAsFixed(0)}rb';
     }
