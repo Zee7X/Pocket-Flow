@@ -329,25 +329,45 @@ class ReceiptTextParser {
   }
 }
 
-
 const _unitWords = {
-  'nol': 0, 'satu': 1, 'dua': 2, 'tiga': 3, 'empat': 4, 'lima': 5,
-  'enam': 6, 'tujuh': 7, 'delapan': 8, 'sembilan': 9,
+  'nol': 0,
+  'satu': 1,
+  'dua': 2,
+  'tiga': 3,
+  'empat': 4,
+  'lima': 5,
+  'enam': 6,
+  'tujuh': 7,
+  'delapan': 8,
+  'sembilan': 9,
 };
 
 /// Ubah angka yang diucapkan menjadi digit, untuk hasil speech-to-text:
 /// "dua puluh lima ribu" -> "25000", "satu juta delapan ratus ribu" ->
 /// "1800000", "setengah juta" -> "500000". Teks lain tidak diubah.
 String normalizeSpokenNumbers(String input) {
-  final tokens = [for (final m in RegExp(r'\s+|\S+').allMatches(input)) m.group(0)!];
+  final tokens = [
+    for (final m in RegExp(r'\s+|\S+').allMatches(input)) m.group(0)!,
+  ];
   bool isSpace(String t) => t.trim().isEmpty;
   final out = <String>[];
   var i = 0;
   bool isNumWord(String w) {
     final l = w.toLowerCase();
     return _unitWords.containsKey(l) ||
-        const {'sepuluh', 'sebelas', 'belas', 'puluh', 'seratus', 'ratus', 'seribu', 'ribu', 'sejuta', 'juta', 'setengah'}
-            .contains(l);
+        const {
+          'sepuluh',
+          'sebelas',
+          'belas',
+          'puluh',
+          'seratus',
+          'ratus',
+          'seribu',
+          'ribu',
+          'sejuta',
+          'juta',
+          'setengah',
+        }.contains(l);
   }
 
   while (i < tokens.length) {
@@ -362,14 +382,29 @@ String normalizeSpokenNumbers(String input) {
       if (isNumWord(tokens[j])) {
         run.add(tokens[j].toLowerCase());
         j++;
-      } else if (isSpace(tokens[j]) && j + 1 < tokens.length && isNumWord(tokens[j + 1])) {
+      } else if (isSpace(tokens[j]) &&
+          j + 1 < tokens.length &&
+          isNumWord(tokens[j + 1])) {
         j++;
       } else {
         break;
       }
     }
     // Satu kata "satu"/"dua" saja (mis. "dua kopi") bukan nominal: biarkan.
-    final hasScale = run.any((w) => const {'puluh', 'belas', 'ratus', 'seratus', 'ribu', 'seribu', 'juta', 'sejuta', 'sepuluh', 'sebelas'}.contains(w));
+    final hasScale = run.any(
+      (w) => const {
+        'puluh',
+        'belas',
+        'ratus',
+        'seratus',
+        'ribu',
+        'seribu',
+        'juta',
+        'sejuta',
+        'sepuluh',
+        'sebelas',
+      }.contains(w),
+    );
     if (!hasScale) {
       out.addAll(tokens.sublist(i, j));
       i = j;
@@ -392,17 +427,31 @@ String normalizeSpokenNumbers(String input) {
         digit = _unitWords[w]!;
       } else {
         switch (w) {
-          case 'sepuluh': group += 10;
-          case 'sebelas': group += 11;
-          case 'belas': group += digit + 10; digit = 0;
-          case 'puluh': group += digit * 10; digit = 0;
-          case 'seratus': group += 100;
-          case 'ratus': group += digit * 100; digit = 0;
-          case 'seribu': total += 1000;
-          case 'ribu': scale(1000);
-          case 'sejuta': total += 1000000;
-          case 'juta': scale(1000000);
-          case 'setengah': half = true;
+          case 'sepuluh':
+            group += 10;
+          case 'sebelas':
+            group += 11;
+          case 'belas':
+            group += digit + 10;
+            digit = 0;
+          case 'puluh':
+            group += digit * 10;
+            digit = 0;
+          case 'seratus':
+            group += 100;
+          case 'ratus':
+            group += digit * 100;
+            digit = 0;
+          case 'seribu':
+            total += 1000;
+          case 'ribu':
+            scale(1000);
+          case 'sejuta':
+            total += 1000000;
+          case 'juta':
+            scale(1000000);
+          case 'setengah':
+            half = true;
         }
       }
     }

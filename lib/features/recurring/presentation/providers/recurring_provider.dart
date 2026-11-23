@@ -92,6 +92,8 @@ class RecurringBillsNotifier extends AsyncNotifier<List<RecurringBill>> {
           remindDaysBefore: remindDaysBefore,
           merchantKey: merchantKey,
         );
+    // Pengingat butuh izin notifikasi: minta sekarang, saat fiturnya dipakai.
+    await NotificationService().ensurePermission();
     ref.invalidateSelf();
   }
 
