@@ -13,12 +13,16 @@ class NotificationService {
   Future<void> init() async {
     if (kIsWeb) return;
     try {
-      const androidSettings =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
+      // Izin TIDAK diminta saat aplikasi dibuka. Diminta lewat
+      // [ensurePermission] ketika pengguna memakai fitur yang butuh
+      // notifikasi (pengingat tagihan, deteksi transaksi).
       const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
       );
 
       const initSettings = InitializationSettings(
@@ -30,6 +34,36 @@ class NotificationService {
     } catch (e, stackTrace) {
       debugPrint('NotificationService init error: $e\n$stackTrace');
     }
+  }
+
+  /// Minta izin notifikasi (iOS, Android 13+). Aman dipanggil berulang:
+  /// sistem hanya menampilkan dialog bila pengguna belum pernah memutuskan.
+  Future<bool> ensurePermission() async {
+    if (kIsWeb) return false;
+    try {
+      final ios = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      if (ios != null) {
+        return await ios.requestPermissions(
+              alert: true,
+              badge: true,
+              sound: true,
+            ) ??
+            false;
+      }
+      final android = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android != null) {
+        return await android.requestNotificationsPermission() ?? false;
+      }
+    } catch (e) {
+      debugPrint('NotificationService.ensurePermission: $e');
+    }
+    return false;
   }
 
   /// Schedule daily reminder to record expenses
@@ -86,7 +120,9 @@ class NotificationService {
     await _notificationsPlugin.show(
       // Satu id per kategori supaya notifikasi lama diganti, bukan menumpuk.
       200 + (categoryName.hashCode.abs() % 500),
-      over ? 'Budget $categoryName habis' : 'Budget $categoryName sudah $percent%',
+      over
+          ? 'Budget $categoryName habis'
+          : 'Budget $categoryName sudah $percent%',
       over
           ? 'Terpakai ${_rp(spentAmount)} dari ${_rp(budgetAmount)}. Pengeluaran berikutnya di kategori ini sudah melebihi rencana.'
           : 'Terpakai ${_rp(spentAmount)} dari ${_rp(budgetAmount)}. Sisa ${_rp(budgetAmount - spentAmount)}.',
@@ -94,7 +130,8 @@ class NotificationService {
         android: AndroidNotificationDetails(
           'budget_alerts',
           'Peringatan Budget',
-          channelDescription: 'Muncul saat budget kategori hampir atau sudah habis',
+          channelDescription:
+              'Muncul saat budget kategori hampir atau sudah habis',
           importance: Importance.high,
           priority: Priority.high,
         ),
@@ -141,7 +178,9 @@ class NotificationService {
 
   static String _rp(int v) {
     final s = v.abs().toString().replaceAllMapped(
-        RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => '.',
+    );
     return '${v < 0 ? '-' : ''}Rp$s';
   }
 

@@ -127,16 +127,31 @@ class AiParseService {
     ];
   }
 
+  /// Pesan untuk pengguna saat AI tidak bisa dipakai. Hasil tetap dibaca
+  /// dengan pembaca lokal, jadi pengguna tidak terhambat.
   String _reason(Object e) {
     final s = e.toString();
+    if (s.contains('rate_limited') ||
+        s.contains('429') ||
+        s.contains('RESOURCE_EXHAUSTED')) {
+      return 'Kuota AI gratis hari ini sedang habis. Sementara dibaca dengan pembaca '
+          'otomatis biasa, jadi periksa hasilnya dulu. AI aktif lagi besok.';
+    }
+    if (s.contains('SocketException') ||
+        s.contains('Failed host lookup') ||
+        s.contains('XMLHttpRequest error') ||
+        s.contains('ClientException')) {
+      return 'Tidak ada koneksi internet. Sementara dibaca dengan pembaca otomatis biasa.';
+    }
+    if (s.contains('login_required') || s.contains('401')) {
+      return 'Sesi login berakhir, jadi AI tidak bisa dipakai. Masuk ulang untuk memakai AI.';
+    }
     if (s.contains('ai_not_configured') ||
         s.contains('404') ||
         s.contains('NOT_FOUND')) {
-      return 'AI belum diaktifkan, memakai pembaca lokal.';
+      return 'Fitur AI sedang tidak aktif. Sementara dibaca dengan pembaca otomatis biasa.';
     }
-    if (s.contains('rate_limited') || s.contains('429')) {
-      return 'Kuota AI gratis hari ini habis, memakai pembaca lokal.';
-    }
-    return 'AI tidak bisa dihubungi, memakai pembaca lokal.';
+    return 'AI sedang ada kendala. Sementara dibaca dengan pembaca otomatis biasa, '
+        'jadi periksa hasilnya dulu.';
   }
 }
