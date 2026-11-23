@@ -1301,11 +1301,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             child: Text(
                               isSavings
                                   ? (isSavedFull
-                                        ? 'Target Terkumpul ✨'
+                                        ? 'Target terkumpul'
                                         : 'Sisa target: ${budget.remainingAmount.toRupiah}')
                                   : (isDebt
                                         ? (budget.remainingAmount <= 0
-                                              ? 'Lunas ✨'
+                                              ? 'Lunas'
                                               : 'Sisa: ${budget.remainingAmount.toRupiah}')
                                         : (isOverBudget
                                               ? 'Over Budget!'
@@ -1608,7 +1608,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               ? Icons.arrow_outward_rounded
                               : Icons.arrow_downward_rounded));
 
-              final String prefix = isSavings ? '📥 ' : (isExpense ? '-' : '+');
+              final String prefix = isSavings ? '' : (isExpense ? '-' : '+');
               final Color amountColor = isSavings
                   ? AppTheme.primary
                   : (isExpense ? AppTheme.danger : AppTheme.success);

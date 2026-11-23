@@ -180,6 +180,7 @@ class InsightEngine {
     if (nDays > 0) allAvg /= nDays;
     if (bestIdx >= 0 &&
         cutoffDay >= 14 &&
+        thisTx.where(_isSpending).length >= 20 &&
         allAvg > 0 &&
         bestAvg > allAvg * 1.4) {
       out.add(
