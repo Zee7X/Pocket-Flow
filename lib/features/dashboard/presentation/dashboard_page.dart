@@ -555,7 +555,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             onAction: () => context.push(AppRoutes.wallets),
           ),
           SizedBox(
-            height: 76,
+            height: 50 + 26 * MediaQuery.textScalerOf(context).scale(1),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: wallets.length,

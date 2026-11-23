@@ -281,8 +281,22 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
     final createdIds = <String>[];
     final txNotifier = ref.read(transactionsProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);
+    var merged = 0;
     try {
       for (final d in _drafts) {
+        if (d.type == TransactionType.income) {
+          final dup = await txNotifier.findSalaryDuplicate(
+            amount: d.amount,
+            date: d.date,
+            text: d.merchant ?? d.note,
+          );
+          if (dup != null) {
+            await txNotifier.mergeIntoSalary(dup, walletId: d.walletId);
+            merged++;
+            saved++;
+            continue;
+          }
+        }
         await ref
             .read(transactionsProvider.notifier)
             .addTransaction(
@@ -304,9 +318,12 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
         saved++;
       }
       if (!mounted) return;
-      final summary = _drafts.length == 1
+      final mergedNote = merged > 0
+          ? ' Gaji sudah tercatat di Alokasi Gaji, jadi tidak dicatat dua kali.'
+          : '';
+      final summary = (_drafts.length == 1 && merged == 0)
           ? '${_drafts.first.merchant ?? 'Transaksi'} ${_drafts.first.amount.toRupiah} tersimpan.'
-          : '$saved transaksi tersimpan.';
+          : '$saved transaksi tersimpan.$mergedNote';
       Navigator.of(context).pop();
       if (withUndo) {
         messenger.hideCurrentSnackBar();

@@ -206,40 +206,45 @@ class _InboxRow extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(meta, style: Ui.body(size: 12)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          isTransfer
-                              ? 'Transfer antar dompet'
-                              : (cat == null
-                                    ? 'Kategori belum dipilih'
-                                    : cat.name),
-                          style: Ui.body(
-                            size: 12.5,
-                            color: cat == null && !isTransfer
-                                ? AppTheme.warning
-                                : AppTheme.textDarkPrimary,
-                            weight: FontWeight.w500,
-                          ),
+                  const SizedBox(height: 6),
+                  Text(
+                    isTransfer
+                        ? 'Transfer antar dompet'
+                        : (cat == null ? 'Kategori belum dipilih' : cat.name),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Ui.body(
+                      size: 12.5,
+                      color: cat == null && !isTransfer
+                          ? AppTheme.warning
+                          : AppTheme.textDarkPrimary,
+                      weight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 4,
+                      children: [
+                        _SmallButton(
+                          label: 'Abaikan',
+                          onTap: () => ref
+                              .read(pendingCapturesProvider.notifier)
+                              .dismiss(item),
                         ),
-                      ),
-                      _SmallButton(
-                        label: 'Abaikan',
-                        onTap: () => ref
-                            .read(pendingCapturesProvider.notifier)
-                            .dismiss(item),
-                      ),
-                      const SizedBox(width: 4),
-                      _SmallButton(
-                        label: cat == null && !isTransfer ? 'Tinjau' : 'Simpan',
-                        primary: true,
-                        onTap: () => cat == null && !isTransfer
-                            ? _review(context, ref)
-                            : _save(context, ref, null),
-                      ),
-                    ],
+                        _SmallButton(
+                          label: cat == null && !isTransfer
+                              ? 'Tinjau'
+                              : 'Simpan',
+                          primary: true,
+                          onTap: () => cat == null && !isTransfer
+                              ? _review(context, ref)
+                              : _save(context, ref, null),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -275,7 +280,7 @@ class _InboxRow extends ConsumerWidget {
     DraftTransaction? d,
   ) async {
     try {
-      await ref
+      final merged = await ref
           .read(pendingCapturesProvider.notifier)
           .confirm(
             item,
@@ -290,7 +295,9 @@ class _InboxRow extends ConsumerWidget {
       if (context.mounted) {
         AppTheme.showSuccessSnackBar(
           context,
-          '${(d?.amount ?? item.amount).toRupiah} tersimpan.',
+          merged
+              ? 'Ini gaji yang sudah tercatat di Alokasi Gaji, jadi digabung (tidak dihitung dua kali).'
+              : '${(d?.amount ?? item.amount).toRupiah} tersimpan.',
         );
       }
     } catch (e) {

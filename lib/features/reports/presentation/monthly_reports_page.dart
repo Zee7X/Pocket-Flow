@@ -357,7 +357,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
               ),
               if (hasSpending) ...[
                 const SizedBox(width: 8),
-                Container(
+                Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withValues(alpha: 0.1),
@@ -371,7 +371,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                       color: AppTheme.primary,
                     ),
                   ),
-                ),
+                ))),
               ],
             ],
           ),
@@ -488,13 +488,13 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
+                      Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: Text(
                         cat.spentAmount.toRupiah,
                         style: AppTheme.monoCurrency(
                           fontSize: 12,
                           color: AppTheme.danger,
                         ),
-                      ),
+                      ))),
                     ],
                   ),
                 );
