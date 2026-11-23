@@ -70,6 +70,9 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
   bool _listening = false;
   bool _busy = false;
   String? _lastAnalyzed;
+
+  /// Info kendala AI (kuota habis, offline, dll.).
+  String? _notice;
   String? _info;
   String _source = 'ai';
   List<DraftTransaction> _drafts = const [];
@@ -156,6 +159,7 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
     setState(() {
       _busy = true;
       _info = null;
+      _notice = null;
       _source = 'ai';
     });
     try {
@@ -169,9 +173,10 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
       final drafts = ref.read(draftEnricherProvider)(res.drafts);
       setState(() {
         _drafts = drafts;
+        _notice = res.fallbackReason;
         _info = drafts.isEmpty
             ? 'Tidak menemukan nominal. Coba sebutkan angkanya, mis. "kopi 18rb".'
-            : res.fallbackReason;
+            : null;
       });
       final ready =
           drafts.isNotEmpty &&
@@ -210,6 +215,7 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
     setState(() {
       _busy = true;
       _info = null;
+      _notice = null;
       _source = 'ocr';
     });
     try {
@@ -231,11 +237,12 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
       final drafts = ref.read(draftEnricherProvider)(res.drafts);
       setState(() {
         _drafts = drafts;
+        _notice = res.fallbackReason;
         _info = drafts.isEmpty
             ? (ocr == null && kIsWeb
                   ? 'Struk tidak terbaca. Di web, scan struk membutuhkan AI aktif.'
                   : 'Total di struk tidak terbaca. Coba foto lebih dekat dan terang.')
-            : res.fallbackReason;
+            : null;
       });
     } catch (e) {
       setState(
@@ -472,6 +479,10 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
             const SizedBox(height: 20),
             const Center(child: CircularProgressIndicator()),
           ],
+          if (_notice != null) ...[
+            const SizedBox(height: 12),
+            _AiNotice(_notice!),
+          ],
           if (_info != null) ...[
             const SizedBox(height: 12),
             Text(_info!, style: Ui.body(size: 12.5)),
@@ -602,6 +613,40 @@ class _DraftRow extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AiNotice extends StatelessWidget {
+  final String message;
+  const _AiNotice(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8EB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF5D9A8)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 18,
+            color: AppTheme.warning,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: Ui.body(size: 12.5, color: AppTheme.textDarkPrimary),
+            ),
+          ),
+        ],
       ),
     );
   }

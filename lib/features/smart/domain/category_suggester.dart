@@ -269,7 +269,9 @@ class CategorySuggester {
     if (isIncome) {
       final text = '${merchant ?? ''} ${note ?? ''}'.toLowerCase();
       final List<String> hint;
-      if (text.contains('freelance') || text.contains('proyek') || text.contains('klien')) {
+      if (text.contains('freelance') ||
+          text.contains('proyek') ||
+          text.contains('klien')) {
         hint = ['freelance', 'lain'];
       } else if (text.contains('bonus') || text.contains('thr')) {
         hint = ['bonus', 'thr', 'lain'];
