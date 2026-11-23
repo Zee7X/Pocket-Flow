@@ -3,7 +3,10 @@
 # Setiap push ke main:
 #   1. analyze + test
 #   2. build web (release) + APK Android (arm64 & armv7)
-#   3. deploy ke GitHub Pages (branch gh-pages):
+#   3. uji jalan: APK dipasang & dibuka di emulator Android, aplikasi iOS
+#      di-build (release, tanpa signing) dan dibuka di simulator iPhone.
+#      Screenshot keduanya tersimpan sebagai artifact.
+#   4. deploy ke GitHub Pages (branch gh-pages):
 #        Web : https://zee7x.github.io/Pocket-Flow/
 #        APK : https://zee7x.github.io/Pocket-Flow/download/pocketflow-arm64.apk
 #              https://zee7x.github.io/Pocket-Flow/download/pocketflow-armv7.apk
@@ -90,9 +93,15 @@ jobs:
       - name: Build APK
         run: >
           flutter build apk --release --split-per-abi
-          --target-platform android-arm,android-arm64
+          --target-platform android-arm,android-arm64,android-x64
           --build-number ${{ github.run_number }}
           --dart-define-from-file=$RUNNER_TEMP/env.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-x64-emulator
+          path: build/app/outputs/flutter-apk/app-x86_64-release.apk
+          retention-days: 1
 
       - name: Susun situs
         run: |
@@ -120,9 +129,95 @@ jobs:
           path: site
           retention-days: 3
 
+  android-smoke:
+    name: Uji jalan di emulator Android
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk-x64-emulator
+          path: apk
+      - name: Aktifkan KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install -r apk/app-x86_64-release.apk
+            adb logcat -c
+            adb shell monkey -p com.example.pocket_flow -c android.intent.category.LAUNCHER 1
+            sleep 30
+            adb exec-out screencap -p > android-launch.png
+            adb logcat -d > android-logcat.txt
+            if grep -q "FATAL EXCEPTION" android-logcat.txt; then echo "::error::Aplikasi crash di Android"; grep -A20 "FATAL EXCEPTION" android-logcat.txt; exit 1; fi
+            adb shell pidof com.example.pocket_flow || (echo "::error::Proses aplikasi tidak berjalan"; exit 1)
+            echo "Aplikasi berjalan di Android"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-smoke
+          path: |
+            android-launch.png
+            android-logcat.txt
+          retention-days: 3
+
+  ios:
+    name: Build & uji jalan iOS
+    needs: test
+    if: github.event_name != 'pull_request'
+    # Runner Intel supaya Google ML Kit bisa jalan di simulator.
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - name: Konfigurasi Supabase
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: printf '{"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s"}' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > "$RUNNER_TEMP/env.json"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build iOS release (tanpa signing)
+        run: flutter build ios --release --no-codesign --dart-define-from-file=$RUNNER_TEMP/env.json
+      - name: Build untuk simulator
+        run: flutter build ios --simulator --debug --dart-define-from-file=$RUNNER_TEMP/env.json
+      - name: Buka di simulator iPhone
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          echo "Simulator: $DEVICE"
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" build/ios/iphonesimulator/Runner.app
+          xcrun simctl launch "$DEVICE" com.example.pocketFlow
+          sleep 40
+          xcrun simctl io "$DEVICE" screenshot ios-launch.png
+          if xcrun simctl spawn "$DEVICE" launchctl list | grep -q "com.example.pocketFlow"; then
+            echo "Aplikasi berjalan di iOS"
+          else
+            echo "::error::Aplikasi tidak berjalan di simulator iOS"
+            xcrun simctl spawn "$DEVICE" log show --last 2m --predicate 'process == "Runner"' | tail -50
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-smoke
+          path: ios-launch.png
+          retention-days: 3
+
   deploy:
     name: Deploy ke GitHub Pages
-    needs: build
+    needs: [build, android-smoke]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
