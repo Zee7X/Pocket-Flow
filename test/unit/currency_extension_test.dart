@@ -13,8 +13,8 @@ void main() {
     });
 
     test('formats compact rupiah amounts', () {
-      expect(1500000.toRupiahCompact, 'Rp1.5jt');
-      expect(2000000000.toRupiahCompact, 'Rp2.0M');
+      expect(1500000.toRupiahCompact, 'Rp1,5jt');
+      expect(2000000000.toRupiahCompact, 'Rp2,0M');
       expect(50000.toRupiahCompact, 'Rp50rb');
       expect(500.toRupiahCompact, contains('500'));
     });

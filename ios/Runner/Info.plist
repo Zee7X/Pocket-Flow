@@ -45,5 +45,26 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.pocketflow.capture</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pocketflow</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera dipakai untuk memotret struk supaya nominal dan merchant tercatat otomatis.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galeri dipakai untuk memilih foto struk atau screenshot bukti bayar.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mikrofon dipakai saat kamu mencatat transaksi dengan suara.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Pengenalan suara mengubah ucapanmu menjadi catatan transaksi.</string>
 </dict>
 </plist>

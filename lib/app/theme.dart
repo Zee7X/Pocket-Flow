@@ -49,14 +49,12 @@ class AppTheme {
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
   // Hero Card Gradient (As seen in the blue card of reference image)
+  static const Color heroSurface = Color(0xFF1E3A8A);
+
   static const LinearGradient heroGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF1D4ED8), // Deep Royal Blue
-      Color(0xFF2563EB), // Electric Blue
-      Color(0xFF3B82F6), // Bright Blue
-    ],
+    colors: [Color(0xFF1E3A8A), Color(0xFF1E40AF)],
   );
 
   static const LinearGradient accentGradient = LinearGradient(
@@ -75,23 +73,11 @@ class AppTheme {
   static const double radiusXL = 24.0;
   static const double radiusFull = 999.0;
 
-  static List<BoxShadow> get cardShadow => [
-        const BoxShadow(
-          color: Color(0x080F172A),
-          blurRadius: 16,
-          offset: Offset(0, 4),
-          spreadRadius: 0,
-        ),
-      ];
+  // Kartu datar: garis tipis tanpa bayangan. Bayangan tebal dan glow
+  // berwarna membuat UI terasa "template".
+  static List<BoxShadow> get cardShadow => const [];
 
-  static List<BoxShadow> get heroShadow => [
-        BoxShadow(
-          color: primary.withValues(alpha: 0.3),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-          spreadRadius: 0,
-        ),
-      ];
+  static List<BoxShadow> get heroShadow => const [];
 
   // ─── Typography Helpers ───────────────────────────────────────────────────
   static TextStyle headingLarge({Color color = textDarkPrimary}) =>
@@ -185,8 +171,8 @@ class AppTheme {
         color: surfaceLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusLarge),
-          side: const BorderSide(color: borderLightSubtle),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE6EAF0)),
         ),
       ),
 
@@ -312,7 +298,8 @@ class AppTheme {
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: surfaceLight,
         surfaceTintColor: Colors.transparent,
-        modalBarrierColor: Color(0x73000000),
+        modalBarrierColor: Color(0x66000000),
+        showDragHandle: false,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXL)),
         ),
