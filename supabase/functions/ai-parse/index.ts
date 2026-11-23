@@ -97,6 +97,19 @@ Dompet (id | nama):
 ${wallets || "- (belum ada)"}`;
 }
 
+function jwtRole(req: Request): string | null {
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const part = token.split(".")[1];
+  if (!part) return null;
+  try {
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)));
+    return typeof payload.role === "string" ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -108,6 +121,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!GEMINI_API_KEY) return json({ error: "ai_not_configured" }, 503);
+
+  // verify_jwt memastikan token sah; di sini kita tolak anon key supaya
+  // kuota AI hanya dipakai pengguna yang sudah login.
+  if (jwtRole(req) !== "authenticated") return json({ error: "login_required" }, 401);
 
   let body: RequestBody;
   try {
