@@ -36,9 +36,28 @@ Future<void> showSmartInputSheet(
   );
 }
 
+/// Mode "tinggal ngomong": langsung mendengarkan, lalu menyimpan otomatis
+/// bila semua transaksi yang terbaca sudah punya nominal dan kategori.
+/// Bila ada yang belum lengkap, hasilnya ditampilkan untuk ditinjau dulu.
+/// Setelah tersimpan muncul snackbar dengan tombol Batalkan.
+Future<void> showVoiceCapture(BuildContext context) {
+  return showAppModal<void>(
+    context: context,
+    builder: (_) =>
+        const SmartInputSheet(start: SmartInputStart.voice, autoSave: true),
+  );
+}
+
 class SmartInputSheet extends ConsumerStatefulWidget {
   final SmartInputStart start;
-  const SmartInputSheet({super.key, this.start = SmartInputStart.text});
+
+  /// Simpan otomatis setelah selesai bicara (lihat [showVoiceCapture]).
+  final bool autoSave;
+  const SmartInputSheet({
+    super.key,
+    this.start = SmartInputStart.text,
+    this.autoSave = false,
+  });
 
   @override
   ConsumerState<SmartInputSheet> createState() => _SmartInputSheetState();
@@ -50,6 +69,7 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
   bool _speechReady = false;
   bool _listening = false;
   bool _busy = false;
+  String? _lastAnalyzed;
   String? _info;
   String _source = 'ai';
   List<DraftTransaction> _drafts = const [];
@@ -80,15 +100,19 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
       return;
     }
     if (!_speechReady) {
-      _speechReady = await _speech.initialize(
-        onStatus: (s) {
-          if ((s == 'done' || s == 'notListening') && mounted && _listening) {
-            setState(() => _listening = false);
-            if (_text.text.trim().isNotEmpty) _analyze();
-          }
-        },
-        onError: (_) => mounted ? setState(() => _listening = false) : null,
-      );
+      try {
+        _speechReady = await _speech.initialize(
+          onStatus: (s) {
+            if ((s == 'done' || s == 'notListening') && mounted && _listening) {
+              setState(() => _listening = false);
+              if (_text.text.trim().isNotEmpty) _analyze();
+            }
+          },
+          onError: (_) => mounted ? setState(() => _listening = false) : null,
+        );
+      } catch (_) {
+        _speechReady = false;
+      }
     }
     if (!_speechReady) {
       setState(
@@ -101,20 +125,34 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
       _listening = true;
       _info = null;
     });
-    await _speech.listen(
-      listenOptions: SpeechListenOptions(
-        localeId: 'id_ID',
-        partialResults: true,
-        listenMode: ListenMode.dictation,
-      ),
-      onResult: (r) => setState(() => _text.text = r.recognizedWords),
-    );
+    try {
+      await _speech.listen(
+        // Berhenti otomatis setelah 3 detik diam, maksimal 45 detik.
+        listenOptions: SpeechListenOptions(
+          pauseFor: const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 45),
+          localeId: 'id_ID',
+          partialResults: true,
+          listenMode: ListenMode.dictation,
+        ),
+        onResult: (r) => setState(() => _text.text = r.recognizedWords),
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _listening = false;
+          _info =
+              'Tidak bisa memakai mikrofon. Periksa izin mikrofon untuk PocketFlow.';
+        });
+      }
+    }
   }
 
   // ─── Analisis teks ────────────────────────────────────────────────────────
   Future<void> _analyze() async {
     final input = _text.text.trim();
-    if (input.isEmpty) return;
+    if (input.isEmpty || input == _lastAnalyzed || _busy) return;
+    _lastAnalyzed = input;
     setState(() {
       _busy = true;
       _info = null;
@@ -135,6 +173,25 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
             ? 'Tidak menemukan nominal. Coba sebutkan angkanya, mis. "kopi 18rb".'
             : res.fallbackReason;
       });
+      final ready =
+          drafts.isNotEmpty &&
+          drafts.every(
+            (d) =>
+                d.amount > 0 &&
+                (d.type == TransactionType.transfer
+                    ? d.walletId != null && d.toWalletId != null
+                    : d.categoryId != null),
+          );
+      if (widget.autoSave && ready && mounted) {
+        setState(() => _busy = false);
+        await _saveAll(withUndo: true);
+        return;
+      }
+      if (widget.autoSave && drafts.isNotEmpty && mounted) {
+        setState(
+          () => _info = 'Ada yang belum punya kategori. Periksa lalu simpan.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -218,9 +275,12 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
   }
 
   // ─── Simpan ───────────────────────────────────────────────────────────────
-  Future<void> _saveAll() async {
+  Future<void> _saveAll({bool withUndo = false}) async {
     setState(() => _busy = true);
     var saved = 0;
+    final createdIds = <String>[];
+    final txNotifier = ref.read(transactionsProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       for (final d in _drafts) {
         await ref
@@ -239,11 +299,36 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
                   ? 'ocr:${stableHash('${d.amount}|${d.date.toIso8601String()}|${d.merchant}')}'
                   : null,
             );
+        final id = ref.read(transactionsProvider).value?.firstOrNull?.id;
+        if (id != null) createdIds.add(id);
         saved++;
       }
       if (!mounted) return;
+      final summary = _drafts.length == 1
+          ? '${_drafts.first.merchant ?? 'Transaksi'} ${_drafts.first.amount.toRupiah} tersimpan.'
+          : '$saved transaksi tersimpan.';
       Navigator.of(context).pop();
-      AppTheme.showSuccessSnackBar(context, '$saved transaksi tersimpan.');
+      if (withUndo) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(summary),
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(
+              label: 'Batalkan',
+              onPressed: () async {
+                for (final id in createdIds) {
+                  try {
+                    await txNotifier.deleteTransaction(id);
+                  } catch (_) {}
+                }
+              },
+            ),
+          ),
+        );
+      } else {
+        AppTheme.showSuccessSnackBar(context, summary);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -277,13 +362,21 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
 
     final hasResults = _drafts.isNotEmpty;
     return AppModalScaffold(
-      title: 'Catat pintar',
-      subtitle:
-          'Ketik atau ucapkan seperti chat. Contoh: "makan bakso 25rb pakai gopay, parkir 5rb".',
+      title: widget.autoSave
+          ? (_listening ? 'Mendengarkan…' : 'Catat dengan suara')
+          : 'Catat pintar',
+      subtitle: widget.autoSave
+          ? 'Ucapkan saja, mis. "makan siang 25 ribu pakai gopay". Tersimpan otomatis setelah kamu diam 3 detik.'
+          : 'Ketik atau ucapkan seperti chat. Contoh: "makan bakso 25rb pakai gopay, parkir 5rb".',
       actions: [
         if (hasResults) ...[
           OutlinedButton(
-            onPressed: _busy ? null : () => setState(() => _drafts = const []),
+            onPressed: _busy
+                ? null
+                : () => setState(() {
+                    _drafts = const [];
+                    _lastAnalyzed = null;
+                  }),
             child: const Text('Ulangi'),
           ),
           ElevatedButton(

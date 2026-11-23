@@ -20,6 +20,7 @@ import '../features/capture/presentation/capture_settings_page.dart';
 import '../features/capture/presentation/inbox_page.dart';
 import '../features/import/presentation/import_page.dart';
 import '../features/more/more_page.dart';
+import '../features/smart/presentation/voice_launch_page.dart';
 import '../features/recurring/presentation/recurring_page.dart';
 import '../features/splits/presentation/splits_page.dart';
 import '../features/wallets/presentation/wallets_page.dart';
@@ -43,6 +44,7 @@ class AppRoutes {
   static const splits = '/splits';
   static const import = '/import';
   static const more = '/more';
+  static const voice = '/voice';
 }
 
 final GlobalKey<NavigatorState> rootNavigatorKey =
@@ -106,6 +108,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.splits, builder: (_, _) => const SplitsPage()),
       GoRoute(path: AppRoutes.import, builder: (_, _) => const ImportPage()),
       GoRoute(path: AppRoutes.more, builder: (_, _) => const MorePage()),
+      // Deep link pocketflow://app/voice (shortcut ikon, widget, Siri Shortcuts)
+      GoRoute(path: AppRoutes.voice, builder: (_, _) => const VoiceLaunchPage()),
 
       // ── Main App Shell with Bottom Navigation ──────────────────────────────
       StatefulShellRoute.indexedStack(

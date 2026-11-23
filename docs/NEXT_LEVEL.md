@@ -73,6 +73,12 @@ Batas free tier dihitung per project Google, bukan per pengguna aplikasi.
 Bila kuota harian habis, aplikasi otomatis kembali ke pembaca lokal dan
 menampilkan pesan "Kuota AI gratis hari ini habis".
 
+**Privasi free tier:** di tier gratis, Google boleh memakai isi permintaan
+(teks catatan, teks struk) untuk mengembangkan produknya, dan menyarankan
+tidak mengirim data pribadi sensitif. Bila ini tidak cocok, aktifkan billing
+di Google AI Studio (tier berbayar tidak dipakai untuk melatih model) atau
+jangan deploy `ai-parse` sehingga semua diproses lokal di HP.
+
 Suara diubah ke teks di perangkat (speech-to-text bawaan Android/iOS/Chrome),
 jadi tidak memakai kuota AI. Struk di Android/iOS dibaca dulu dengan OCR ML
 Kit di perangkat; yang dikirim ke AI hanya teksnya. Di web, foto struk
@@ -97,7 +103,27 @@ flutter run -d chrome -t lib/demo/demo_main.dart
 
 Data contoh hanya ada di memori. AI di mode ini selalu memakai pembaca lokal.
 
-## 4. Deteksi notifikasi di Android
+## 4. Catat dengan suara ("tinggal ngomong")
+
+Tombol **Bicara** di Home (atau tombol + → Bicara) langsung mendengarkan.
+Ucapkan misalnya "makan siang dua puluh lima ribu pakai gopay, parkir lima
+ribu". Setelah diam 3 detik:
+
+- bila semua transaksi sudah punya nominal dan kategori, langsung tersimpan
+  dan muncul snackbar dengan tombol **Batalkan** (6 detik);
+- bila ada yang belum punya kategori, daftar ditampilkan untuk dicek dulu.
+
+Angka yang diucapkan ("dua puluh lima ribu", "satu koma lima juta",
+"setengah juta") diubah ke angka sebelum dibaca.
+
+Cara membuka langsung tanpa membuka aplikasi dulu:
+
+- **Android:** tekan lama ikon PocketFlow → *Catat suara*, atau tombol mic
+  di widget layar utama.
+- **iPhone:** buat Shortcut dengan aksi *Open URL* `pocketflow://app/voice`,
+  lalu jalankan lewat Siri ("Hey Siri, catat keuangan") atau Action Button.
+
+## 5. Deteksi notifikasi di Android
 
 1. Buka **Lainnya → Deteksi dari notifikasi → Aktifkan deteksi**.
 2. Baca penjelasan izin, lalu aktifkan **PocketFlow** di halaman
@@ -129,7 +155,7 @@ dicoba dengan notifikasi asli dari HP kamu; contoh di
 `test/unit/notification_parser_test.dart` disusun dari format umum, belum dari
 notifikasi asli setiap aplikasi.
 
-## 5. iPhone
+## 6. iPhone
 
 iOS tidak mengizinkan aplikasi membaca notifikasi aplikasi lain. Alternatif
 yang tersedia:
@@ -145,7 +171,7 @@ Kit. Jalankan `cd ios && pod install` setelah `flutter pub get`. ML Kit belum
 mendukung simulator Apple Silicon, jadi uji di iPhone asli. Widget layar utama
 iOS dan Share Extension butuh target baru di Xcode dan belum dibuat.
 
-## 6. Import dari aplikasi lain
+## 7. Import dari aplikasi lain
 
 **Lainnya → Import dari aplikasi lain**, lalu pilih file:
 

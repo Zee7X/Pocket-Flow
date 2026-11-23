@@ -20,6 +20,7 @@ import '../../transactions/presentation/providers/transactions_provider.dart';
 import '../../transactions/presentation/widgets/add_transaction_dialog.dart';
 import '../../debts_savings/presentation/providers/debts_savings_provider.dart';
 import 'providers/dashboard_provider.dart';
+import '../../../core/widgets/app_shell.dart' show openQuickAddModal;
 import '../../../core/widgets/period_picker.dart';
 import '../../../core/widgets/ui.dart';
 import '../../capture/presentation/providers/capture_provider.dart';
@@ -404,29 +405,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _heroAction(
-                Icons.auto_awesome_outlined,
-                'Catat pintar',
-                () => showSmartInputSheet(context),
-              ),
-              _heroAction(
-                Icons.receipt_long_outlined,
-                'Scan struk',
-                () => showSmartInputSheet(
-                  context,
-                  start: SmartInputStart.receipt,
-                ),
-              ),
-              _heroAction(
-                Icons.north_east_rounded,
-                'Keluar',
-                () => _openAddTransaction(context, TransactionType.expense),
-              ),
-              _heroAction(
-                Icons.south_west_rounded,
-                'Masuk',
-                () => _openAddTransaction(context, TransactionType.income),
-              ),
+              _heroAction(Icons.mic_none_rounded, 'Bicara', () => showVoiceCapture(context)),
+              _heroAction(Icons.auto_awesome_outlined, 'Ketik', () => showSmartInputSheet(context)),
+              _heroAction(Icons.receipt_long_outlined, 'Scan struk',
+                  () => showSmartInputSheet(context, start: SmartInputStart.receipt)),
+              _heroAction(Icons.edit_note_rounded, 'Manual', () => openQuickAddModal(context)),
             ],
           ),
         ],

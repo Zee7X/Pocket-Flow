@@ -41,6 +41,7 @@
                 <data android:scheme="pocketflow" android:host="app"/>
             </intent-filter>
             <meta-data android:name="flutter_deeplinking_enabled" android:value="true"/>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts"/>
         </activity>
 
         <!-- Membaca notifikasi aplikasi pembayaran (butuh izin Akses Notifikasi dari pengguna) -->
