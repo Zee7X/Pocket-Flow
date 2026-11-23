@@ -1,0 +1,144 @@
+# CI/CD PocketFlow
+#
+# Setiap push ke main:
+#   1. analyze + test
+#   2. build web (release) + APK Android (arm64 & armv7)
+#   3. deploy ke GitHub Pages (branch gh-pages):
+#        Web : https://zee7x.github.io/Pocket-Flow/
+#        APK : https://zee7x.github.io/Pocket-Flow/download/pocketflow-arm64.apk
+#              https://zee7x.github.io/Pocket-Flow/download/pocketflow-armv7.apk
+#
+# gh-pages selalu ditimpa dengan SATU commit baru (force orphan), jadi build
+# lama otomatis terhapus dan ukuran repo tidak terus membesar.
+#
+# Pull request hanya menjalankan analyze + test.
+#
+# Butuh 2 Repository variables (Settings → Secrets and variables → Actions →
+# Variables): SUPABASE_URL dan SUPABASE_ANON_KEY. Anon key memang publik
+# (ikut di aplikasi), data tetap dilindungi RLS.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.38.5"
+
+jobs:
+  test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  build:
+    name: Build web & APK
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cek konfigurasi Supabase
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Repository variables SUPABASE_URL dan SUPABASE_ANON_KEY belum diisi (Settings → Secrets and variables → Actions → Variables)."
+            exit 1
+          fi
+          printf '{"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s"}' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > "$RUNNER_TEMP/env.json"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build web
+        run: >
+          flutter build web --release
+          --base-href /Pocket-Flow/
+          --dart-define-from-file=$RUNNER_TEMP/env.json
+
+      - name: Build APK
+        run: >
+          flutter build apk --release --split-per-abi
+          --target-platform android-arm,android-arm64
+          --build-number ${{ github.run_number }}
+          --dart-define-from-file=$RUNNER_TEMP/env.json
+
+      - name: Susun situs
+        run: |
+          mkdir -p site/download
+          cp -r build/web/. site/
+          cp site/index.html site/404.html
+          touch site/.nojekyll
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk site/download/pocketflow-arm64.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk site/download/pocketflow-armv7.apk
+          cat > site/download/index.html <<EOF
+          <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Unduh PocketFlow</title>
+          <body style="font-family:system-ui;max-width:480px;margin:40px auto;padding:0 16px;line-height:1.5">
+          <h2>PocketFlow untuk Android</h2>
+          <p>Build #${{ github.run_number }} dari commit <code>${GITHUB_SHA::7}</code>.</p>
+          <p><a href="pocketflow-arm64.apk"><b>Unduh APK</b></a> (hampir semua HP Android 2018 ke atas)</p>
+          <p><a href="pocketflow-armv7.apk">APK untuk HP lama (armv7)</a></p>
+          <p><a href="../">Buka versi web</a></p>
+          </body>
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site
+          retention-days: 3
+
+  deploy:
+    name: Deploy ke GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: deploy-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: site
+          force_orphan: true
+          commit_message: "Deploy ${{ github.sha }} (build #${{ github.run_number }})"
