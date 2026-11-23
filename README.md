@@ -65,6 +65,32 @@ Sebagian besar aplikasi pencatat keuangan konvensional hanya bersifat *reaktif* 
 
 ---
 
+## 🧪 Coba PocketFlow (tanpa install apa pun)
+
+Build terbaru dibuat otomatis oleh GitHub Actions setiap ada perubahan di branch `main`.
+
+### Uji di browser (laptop / HP)
+1. Buka **https://zee7x.github.io/Pocket-Flow/** di Chrome, Edge, atau Safari.
+2. Daftar akun baru lewat **Daftar sekarang**, atau masuk dengan akun yang sudah ada.
+3. Yang bisa dicoba: Bicara (izinkan mikrofon), Catat pintar, Scan struk (pilih foto), Import file Money Lover/Money Manager, dompet, tagihan, patungan, dan laporan.
+
+Deteksi notifikasi GoPay/OVO/bank dan widget layar utama hanya ada di aplikasi Android.
+
+### Pasang di HP Android
+1. Dari HP, buka **https://zee7x.github.io/Pocket-Flow/download/** lalu ketuk **Unduh APK**.
+   Link langsung: [pocketflow-arm64.apk](https://zee7x.github.io/Pocket-Flow/download/pocketflow-arm64.apk) (HP Android 2018 ke atas) atau [pocketflow-armv7.apk](https://zee7x.github.io/Pocket-Flow/download/pocketflow-armv7.apk) (HP lama).
+2. Izinkan **Install aplikasi tidak dikenal** untuk browser bila diminta. Peringatan Play Protect wajar karena APK ini belum dari Play Store.
+3. Buka PocketFlow, masuk, lalu aktifkan **Lainnya → Deteksi dari notifikasi** untuk mencoba pencatatan otomatis.
+4. Untuk memperbarui, unduh ulang APK dari link yang sama dan pasang di atas versi lama (data tetap aman di akun).
+
+### iPhone
+Belum ada file instalasi untuk iPhone karena butuh akun Apple Developer (TestFlight). Sementara itu pakai versi web di Safari; ketuk **Bagikan → Add to Home Screen** supaya terasa seperti aplikasi.
+
+### Melaporkan masalah
+Buka [Issues](https://github.com/Zee7X/Pocket-Flow/issues) dan sertakan: perangkat & versi OS, langkah yang dilakukan, dan screenshot. Untuk notifikasi yang tidak terbaca, sertakan screenshot notifikasinya (samarkan nama/nomor rekening).
+
+---
+
 ## 🆕 Next Level: pencatatan otomatis
 
 - **Deteksi transaksi dari notifikasi** GoPay, OVO, DANA, ShopeePay, bank, dan SMS bank (Android), masuk ke halaman *Perlu Ditinjau*.
