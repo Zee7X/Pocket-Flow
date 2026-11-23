@@ -188,6 +188,21 @@ class PendingCapturesNotifier extends AsyncNotifier<List<PendingCapture>> {
             );
 
       // Catat otomatis bila diizinkan dan kategori berasal dari aturan pengguna.
+      // Gaji yang sudah tercatat lewat Alokasi Gaji: gabungkan, jangan dobel.
+      if (item.type == TransactionType.income) {
+        final txs = ref.read(transactionsProvider.notifier);
+        final dup = await txs.findSalaryDuplicate(
+          amount: item.amount,
+          date: item.occurredAt,
+          text: item.merchant,
+        );
+        if (dup != null) {
+          await txs.mergeIntoSalary(dup, walletId: wallet?.id);
+          autoSaved++;
+          continue;
+        }
+      }
+
       if (settings.autoConfirm &&
           item.confidence >= 0.8 &&
           (item.type == TransactionType.transfer ||
@@ -267,8 +282,9 @@ class PendingCapturesNotifier extends AsyncNotifier<List<PendingCapture>> {
     return null;
   }
 
-  /// Simpan item inbox sebagai transaksi.
-  Future<void> confirm(
+  /// Simpan item inbox sebagai transaksi. Mengembalikan true bila item ini
+  /// ternyata gaji yang sudah tercatat dan digabungkan (tidak dibuat baru).
+  Future<bool> confirm(
     PendingCapture item, {
     required TransactionType type,
     required int amount,
@@ -279,6 +295,24 @@ class PendingCapturesNotifier extends AsyncNotifier<List<PendingCapture>> {
     String? merchant,
     String? note,
   }) async {
+    if (type == TransactionType.income) {
+      final txs = ref.read(transactionsProvider.notifier);
+      final dup = await txs.findSalaryDuplicate(
+        amount: amount,
+        date: date,
+        text: merchant ?? note,
+      );
+      if (dup != null) {
+        await txs.mergeIntoSalary(dup, walletId: walletId);
+        await ref
+            .read(pendingRepositoryProvider)
+            .setStatus(item.id, 'confirmed', transactionId: dup.id);
+        state = AsyncValue.data(
+          (state.value ?? []).where((p) => p.id != item.id).toList(),
+        );
+        return true;
+      }
+    }
     String? txId;
     try {
       await ref
@@ -320,6 +354,7 @@ class PendingCapturesNotifier extends AsyncNotifier<List<PendingCapture>> {
     state = AsyncValue.data(
       (state.value ?? []).where((p) => p.id != item.id).toList(),
     );
+    return false;
   }
 
   Future<void> dismiss(PendingCapture item) async {

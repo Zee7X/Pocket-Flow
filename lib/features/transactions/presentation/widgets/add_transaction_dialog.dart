@@ -72,6 +72,7 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
   late DateTime _transactionDate;
   bool _addingCategory = false;
   bool _showNoIncomeWarning = false;
+  TransactionModel? _salaryDup;
   bool _saving = false;
   String? _amountError;
 
@@ -135,6 +136,7 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
       _linkedDebtId = null;
       _linkedGoalId = null;
       _showNoIncomeWarning = false;
+      _salaryDup = null;
     });
     _suggestCategory();
   }
@@ -186,7 +188,10 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
     }
   }
 
-  void _save({bool ignoreNoIncome = false}) {
+  Future<void> _save({
+    bool ignoreNoIncome = false,
+    bool ignoreSalaryDup = false,
+  }) async {
     final amount = CurrencyInputFormatter.parse(_amountCtrl.text);
     if (amount <= 0) {
       setState(() => _amountError = 'Isi nominal');
@@ -222,7 +227,36 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
         return;
       }
     }
+    // Gaji yang sudah tercatat lewat Alokasi Gaji jangan dicatat dua kali.
+    if (!ignoreSalaryDup && _type == TransactionType.income && !_isEditing) {
+      final dup = await ref
+          .read(transactionsProvider.notifier)
+          .findSalaryDuplicate(
+            amount: amount,
+            date: _transactionDate,
+            text: _descCtrl.text,
+          );
+      if (!mounted) return;
+      if (dup != null) {
+        setState(() => _salaryDup = dup);
+        return;
+      }
+    }
     _executeSave(amount);
+  }
+
+  Future<void> _mergeSalary() async {
+    final dup = _salaryDup;
+    if (dup == null) return;
+    await ref
+        .read(transactionsProvider.notifier)
+        .mergeIntoSalary(dup, walletId: _walletId);
+    if (!mounted) return;
+    Navigator.pop(context);
+    AppTheme.showSuccessSnackBar(
+      context,
+      'Digabung dengan ${dup.description ?? 'gaji'} yang sudah tercatat.',
+    );
   }
 
   String? _paymentMethodFor(String? walletId) {
@@ -565,6 +599,47 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             ),
           ],
 
+          if (_salaryDup != null) ...[
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8EB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF5D9A8)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Gaji ini sudah tercatat', style: Ui.title(size: 14)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_salaryDup!.description ?? 'Gaji'} sebesar ${_salaryDup!.amount.toRupiah} sudah dicatat dari Alokasi Gaji. '
+                    'Kalau ini uang yang sama, gabungkan supaya tidak dihitung dua kali.',
+                    style: Ui.body(size: 12.5),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _save(ignoreSalaryDup: true),
+                          child: const Text('Simpan terpisah'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _mergeSalary,
+                          child: const Text('Gabungkan'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (_showNoIncomeWarning) ...[
             const SizedBox(height: 18),
             Container(

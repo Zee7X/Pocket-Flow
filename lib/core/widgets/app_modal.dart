@@ -343,7 +343,7 @@ class AppFieldLabel extends StatelessWidget {
               ),
             ),
           ),
-          ?trailing,
+          if (trailing != null) Flexible(child: trailing!),
         ],
       ),
     );

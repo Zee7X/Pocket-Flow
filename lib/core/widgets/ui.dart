@@ -165,6 +165,7 @@ class ListRow extends StatelessWidget {
           children: [
             if (leading != null) ...[leading!, const SizedBox(width: 12)],
             Expanded(
+              flex: 3,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -191,7 +192,17 @@ class ListRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+            if (trailing != null) ...[
+              const SizedBox(width: 12),
+              Flexible(
+                flex: 2,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: trailing!,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -302,12 +313,15 @@ class _Chip extends StatelessWidget {
                 Icon(icon, size: 16, color: fg),
                 const SizedBox(width: 6),
               ],
-              Text(
-                label,
-                style: Ui.body(
-                  size: 13,
-                  color: fg,
-                  weight: selected ? FontWeight.w600 : FontWeight.w500,
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: Ui.body(
+                    size: 13,
+                    color: fg,
+                    weight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
               ),
             ],

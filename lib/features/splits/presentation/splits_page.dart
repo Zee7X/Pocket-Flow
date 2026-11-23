@@ -176,7 +176,7 @@ class _SplitCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  Text(
+                  Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: Text(
                     p.shareAmount.toRupiah,
                     style: Ui.amount(
                       size: 14,
@@ -184,7 +184,7 @@ class _SplitCard extends ConsumerWidget {
                           ? AppTheme.textDarkMuted
                           : AppTheme.textDarkPrimary,
                     ),
-                  ),
+                  ))),
                   const SizedBox(width: 4),
                   p.isSettled
                       ? const Padding(

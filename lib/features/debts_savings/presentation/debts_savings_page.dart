@@ -303,7 +303,7 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
                             ],
                           ),
                         ),
-                        ElevatedButton(
+                        Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: ElevatedButton(
                           onPressed: () => _openRecordSavings(context, goal),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.surfaceLightAlt,
@@ -326,7 +326,7 @@ class _DebtsSavingsPageState extends ConsumerState<DebtsSavingsPage>
                               ),
                             ],
                           ),
-                        ),
+                        ))),
                         const SizedBox(width: 4),
                         IconButton(
                           icon: const Icon(Icons.delete_outline_rounded,

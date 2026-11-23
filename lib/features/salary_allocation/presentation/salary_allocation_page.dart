@@ -552,7 +552,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                         ],
                       ),
                     ),
-                    Column(
+                    Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
@@ -584,7 +584,7 @@ class _SalaryAllocationPageState extends ConsumerState<SalaryAllocationPage> {
                           ],
                         ),
                       ],
-                    ),
+                    ))),
                   ],
                 ),
               ),
