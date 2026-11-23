@@ -282,6 +282,13 @@ void openQuickAddModal(BuildContext context) {
         child: Column(
           children: [
             item(
+              Icons.mic_none_rounded,
+              AppTheme.primary,
+              'Bicara',
+              'Ucapkan saja, langsung tersimpan',
+              () => showVoiceCapture(context),
+            ),
+            item(
               Icons.auto_awesome_outlined,
               AppTheme.primary,
               'Catat pintar',

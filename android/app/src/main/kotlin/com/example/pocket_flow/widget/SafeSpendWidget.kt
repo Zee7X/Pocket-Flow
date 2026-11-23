@@ -56,6 +56,13 @@ class SafeSpendWidget : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             views.setOnClickPendingIntent(R.id.widget_root, open)
+            val voice = PendingIntent.getActivity(
+                context, 2,
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse("pocketflow://app/voice"), context, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.widget_mic, voice)
             return views
         }
     }

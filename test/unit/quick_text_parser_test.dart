@@ -40,6 +40,23 @@ void main() {
     });
   });
 
+  group('Angka yang diucapkan', () {
+    test('kata bilangan jadi angka', () {
+      expect(normalizeSpokenNumbers('dua puluh lima ribu'), '25000');
+      expect(normalizeSpokenNumbers('satu juta delapan ratus ribu'), '1800000');
+      expect(normalizeSpokenNumbers('setengah juta'), '500000');
+      expect(normalizeSpokenNumbers('seratus lima puluh ribu'), '150000');
+      expect(normalizeSpokenNumbers('dua belas ribu lima ratus'), '12500');
+      expect(normalizeSpokenNumbers('beli dua kopi'), 'beli dua kopi');
+    });
+
+    test('hasil suara langsung jadi transaksi', () {
+      final r = QuickTextParser(now: now).parse('makan siang dua puluh lima ribu pakai gopay');
+      expect(r.single.amount, 25000);
+      expect(r.single.providerKey, 'gopay');
+    });
+  });
+
   group('ReceiptTextParser', () {
     test('mengambil grand total, bukan subtotal atau tunai', () {
       const ocr = '''
