@@ -115,7 +115,7 @@ class AiParseService {
         DraftTransaction(
           type: TransactionType.fromString(t['type'] as String? ?? 'expense'),
           amount: (t['amount'] as num).toInt(),
-          merchant: t['merchant'] as String?,
+          merchant: t['merchant'] as String? ?? t['note'] as String?,
           note: t['note'] as String? ?? t['merchant'] as String?,
           date:
               DateTime.tryParse(t['date'] as String? ?? '') ??
