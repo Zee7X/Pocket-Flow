@@ -4,7 +4,7 @@
   # PocketFlow
   ### *Smart Salary-First Zero-Based Budgeting App*
 
-  [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+  [![Flutter](https://img.shields.io/badge/Flutter-3.38-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
   [![State Management](https://img.shields.io/badge/Riverpod-2.x-3C4858?logo=flutter)](https://riverpod.dev)
   [![Design](https://img.shields.io/badge/Design-Neo--Banking%20Light-2563EB)](#-desain-antarmuka)
   [![License](https://img.shields.io/badge/License-Private-slate.svg)](#)
