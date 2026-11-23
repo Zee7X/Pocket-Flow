@@ -26,8 +26,10 @@ runs:
         WORK=$(mktemp -d)
         cd "$WORK"
         git init -q -b gh-pages
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        # Commit deploy memakai identitas pemilik repo supaya tidak muncul
+        # kontributor tambahan (github-actions[bot]) di halaman repo.
+        git config user.name "Rizick"
+        git config user.email "86407481+Zee7X@users.noreply.github.com"
         git remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"
 
         # Coba sampai 3x bila job lain mendorong gh-pages bersamaan.
