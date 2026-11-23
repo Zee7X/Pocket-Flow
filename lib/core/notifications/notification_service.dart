@@ -54,7 +54,7 @@ class NotificationService {
 
     await _notificationsPlugin.zonedSchedule(
       101, // Daily reminder ID
-      'PocketFlow 📊',
+      'PocketFlow',
       'Sudah catat pengeluaran hari ini? Yuk luangkan 1 menit.',
       scheduledDate,
       const NotificationDetails(

@@ -357,7 +357,7 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
                         if (mounted) {
                           AppTheme.showSuccessSnackBar(
                             context,
-                            '"${cat.name}" diubah menjadi ${!cat.isFixed ? 'Biaya Tetap 📌' : 'Biaya Variabel (Harian) 📅'}',
+                            '"${cat.name}" diubah menjadi ${!cat.isFixed ? 'Biaya Tetap' : 'Biaya Variabel (Harian)'}',
                           );
                         }
                       }
@@ -418,7 +418,7 @@ class _CategoriesRulesPageState extends ConsumerState<CategoriesRulesPage>
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      cat.isFixed ? '📌 Tetap' : '📅 Harian',
+                                      cat.isFixed ? 'Tetap' : 'Harian',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,

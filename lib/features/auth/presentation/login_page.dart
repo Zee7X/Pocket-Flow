@@ -119,7 +119,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
         const PocketFlowLogo(size: 26),
         const SizedBox(height: 28),
         Text(
-          'Selamat datang\nkembali 👋',
+          'Selamat datang\nkembali',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 28,
             fontWeight: FontWeight.w700,

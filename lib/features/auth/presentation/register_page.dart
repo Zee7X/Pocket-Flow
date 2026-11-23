@@ -142,7 +142,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage>
         const PocketFlowLogo(size: 26),
         const SizedBox(height: 24),
         Text(
-          'Mulai atur alokasi\nkeuanganmu ✨',
+          'Mulai atur alokasi\nkeuanganmu',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 28,
             fontWeight: FontWeight.w700,

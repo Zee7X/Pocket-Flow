@@ -324,7 +324,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('Selamat datang\nkembali 👋'), findsOneWidget);
+      expect(find.text('Selamat datang\nkembali'), findsOneWidget);
       expect(find.text('Masuk'), findsWidgets);
     });
 
@@ -339,7 +339,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('Mulai atur alokasi\nkeuanganmu ✨'), findsOneWidget);
+      expect(find.text('Mulai atur alokasi\nkeuanganmu'), findsOneWidget);
     });
 
     testWidgets('3. DashboardPage renders Safe Spending and Category Budgets (With Allocation Mode)', (tester) async {

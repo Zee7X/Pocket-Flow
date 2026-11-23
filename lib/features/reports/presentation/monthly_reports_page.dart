@@ -180,7 +180,7 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
                   borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                 ),
                 child: Text(
-                  isPositive ? 'Surplus 📈' : 'Defisit 📉',
+                  isPositive ? 'Surplus' : 'Defisit',
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
