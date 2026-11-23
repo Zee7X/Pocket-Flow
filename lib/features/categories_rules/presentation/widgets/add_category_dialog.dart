@@ -6,6 +6,7 @@ import '../../../../app/theme.dart';
 import '../../../../core/utils/error_helper.dart';
 import '../../domain/category.dart';
 import '../providers/categories_rules_provider.dart';
+import '../../../../core/widgets/app_modal.dart';
 
 class AddCategoryDialog extends ConsumerStatefulWidget {
   const AddCategoryDialog({super.key});
@@ -28,7 +29,7 @@ class _AddCategoryDialogState extends ConsumerState<AddCategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppAlertModal(
       scrollable: true,
       backgroundColor: AppTheme.surfaceLight,
       shape: RoundedRectangleBorder(

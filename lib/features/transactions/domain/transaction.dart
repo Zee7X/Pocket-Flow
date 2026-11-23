@@ -34,6 +34,22 @@ class TransactionModel {
   final String? categoryIcon;
   final String? categoryColor;
 
+  /// Dompet sumber (expense/transfer) atau tujuan (income).
+  final String? walletId;
+
+  /// Dompet tujuan untuk transfer antar dompet.
+  final String? toWalletId;
+  final String? merchant;
+
+  /// manual | notification | ocr | shortcut | paste | ai | import | recurring | split | offline
+  final String source;
+
+  /// Hash dedupe untuk transaksi dari sumber otomatis / import.
+  final String? externalRef;
+
+  /// True bila transaksi dibuat saat offline dan belum terkirim ke server.
+  final bool isPendingSync;
+
   const TransactionModel({
     required this.id,
     required this.userId,
@@ -48,7 +64,15 @@ class TransactionModel {
     this.categoryType,
     this.categoryIcon,
     this.categoryColor,
+    this.walletId,
+    this.toWalletId,
+    this.merchant,
+    this.source = 'manual',
+    this.externalRef,
+    this.isPendingSync = false,
   });
+
+  bool get isTransfer => type == TransactionType.transfer;
 
   bool get isSavings =>
       categoryType == 'savings' ||
@@ -82,12 +106,18 @@ class TransactionModel {
       amount: (json['amount'] as num).toInt(),
       transactionDate: DateTime.parse(json['transaction_date'] as String),
       description: note,
-      paymentMethod: null,
+      paymentMethod: json['payment_method'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       categoryName: cat?['name'] as String?,
       categoryType: cat?['type'] as String?,
       categoryIcon: cat?['icon'] as String?,
       categoryColor: cat?['color'] as String?,
+      walletId: json['wallet_id'] as String?,
+      toWalletId: json['to_wallet_id'] as String?,
+      merchant: json['merchant'] as String?,
+      source: json['source'] as String? ?? 'manual',
+      externalRef: json['external_ref'] as String?,
+      isPendingSync: json['_pending_sync'] as bool? ?? false,
     );
   }
 
@@ -99,6 +129,12 @@ class TransactionModel {
       'transaction_date': transactionDate.toIso8601String().split('T').first,
       if (categoryId != null) 'category_id': categoryId,
       if (description != null) 'note': description,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (walletId != null) 'wallet_id': walletId,
+      if (toWalletId != null) 'to_wallet_id': toWalletId,
+      if (merchant != null) 'merchant': merchant,
+      'source': source,
+      if (externalRef != null) 'external_ref': externalRef,
     };
   }
 }

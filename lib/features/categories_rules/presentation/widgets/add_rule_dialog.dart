@@ -11,6 +11,7 @@ import '../../../salary_allocation/presentation/providers/salary_allocation_prov
 import '../../domain/allocation_rule.dart';
 import '../../domain/category.dart';
 import '../providers/categories_rules_provider.dart';
+import '../../../../core/widgets/app_modal.dart';
 
 class AddRuleDialog extends ConsumerStatefulWidget {
   final List<Category> categories;
@@ -99,7 +100,7 @@ class _AddRuleDialogState extends ConsumerState<AddRuleDialog> {
     final isEditing = widget.initialRule != null;
     final selectedCat = widget.categories.where((c) => c.id == _selectedCategoryId).firstOrNull;
 
-    return AlertDialog(
+    return AppAlertModal(
       scrollable: true,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       actionsOverflowButtonSpacing: 8,

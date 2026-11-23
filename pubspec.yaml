@@ -36,6 +36,14 @@ dependencies:
   # Serialization
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
+  shared_preferences: ^2.5.5
+  image_picker: ^1.2.3
+  google_mlkit_text_recognition: ^0.16.0
+  connectivity_plus: ^7.3.1
+  file_picker: ^13.4.1
+  csv: ^8.0.0
+  excel: ^4.0.6
+  speech_to_text: ^7.4.0
 
 dev_dependencies:
   flutter_test:

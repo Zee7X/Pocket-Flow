@@ -13,6 +13,7 @@ import '../../../transactions/presentation/providers/transactions_provider.dart'
 import '../../domain/savings_goal.dart';
 import '../../domain/savings_transaction.dart';
 import '../providers/debts_savings_provider.dart';
+import '../../../../core/widgets/app_modal.dart';
 
 class RecordSavingsDialog extends ConsumerStatefulWidget {
   final SavingsGoal goal;
@@ -40,7 +41,7 @@ class _RecordSavingsDialogState extends ConsumerState<RecordSavingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppAlertModal(
       scrollable: true,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       backgroundColor: AppTheme.surfaceLight,
