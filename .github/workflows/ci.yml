@@ -91,11 +91,18 @@ jobs:
           --dart-define-from-file=$RUNNER_TEMP/env.json
 
       - name: Build APK
-        run: >
-          flutter build apk --release --split-per-abi
-          --target-platform android-arm,android-arm64,android-x64
-          --build-number ${{ github.run_number }}
-          --dart-define-from-file=$RUNNER_TEMP/env.json
+        # Maven Central kadang membalas 429 (terlalu banyak permintaan) ke
+        # runner GitHub. Ulangi sampai 3 kali dengan jeda.
+        run: |
+          for i in 1 2 3; do
+            flutter build apk --release --split-per-abi \
+              --target-platform android-arm,android-arm64,android-x64 \
+              --build-number ${{ github.run_number }} \
+              --dart-define-from-file=$RUNNER_TEMP/env.json && exit 0
+            echo "Build APK gagal (percobaan $i), coba lagi dalam 60 detik..."
+            sleep 60
+          done
+          exit 1
 
       - uses: actions/upload-artifact@v4
         with:
@@ -176,6 +183,11 @@ jobs:
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
+      # connectivity_plus memakai API iOS 26, jadi butuh Xcode 26 ke atas.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: xcodebuild -version
       - name: Konfigurasi Supabase
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
