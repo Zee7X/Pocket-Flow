@@ -1,11 +1,11 @@
 {
-    "name": "pocket_flow",
-    "short_name": "pocket_flow",
+    "name": "PocketFlow",
+    "short_name": "PocketFlow",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F4F6FA",
+    "theme_color": "#F4F6FA",
+    "description": "PocketFlow: atur gaji, catat pengeluaran otomatis.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

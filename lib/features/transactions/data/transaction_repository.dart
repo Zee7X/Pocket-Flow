@@ -350,6 +350,28 @@ class TransactionRepository {
         .eq('user_id', _userId);
   }
 
+  /// Transaksi pemasukan dengan catatan tertentu (mis. "Gaji Periode 11/2026").
+  Future<TransactionModel?> findIncomeByNote(String note) async {
+    final res = await _client
+        .from('pf_transactions')
+        .select(kTransactionSelect)
+        .eq('user_id', _userId)
+        .eq('type', 'income')
+        .eq('note', note)
+        .limit(1)
+        .maybeSingle();
+    return res == null ? null : TransactionModel.fromJson(res);
+  }
+
+  /// Lengkapi transaksi gaji dengan dompet tempat gaji benar-benar masuk.
+  Future<void> setWallet(String id, String walletId) async {
+    await _client
+        .from('pf_transactions')
+        .update({'wallet_id': walletId})
+        .eq('id', id)
+        .eq('user_id', _userId);
+  }
+
   /// Helper to safely increment or decrement budget spent_amount
   Future<void> _adjustBudgetSpent({
     required String categoryId,

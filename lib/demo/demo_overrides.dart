@@ -222,7 +222,7 @@ class _DemoPendingNotifier extends PendingCapturesNotifier {
   }
 
   @override
-  Future<void> confirm(
+  Future<bool> confirm(
     PendingCapture item, {
     required TransactionType type,
     required int amount,
@@ -249,6 +249,7 @@ class _DemoPendingNotifier extends PendingCapturesNotifier {
     state = AsyncValue.data(
       (state.value ?? []).where((p) => p.id != item.id).toList(),
     );
+    return false;
   }
 
   @override

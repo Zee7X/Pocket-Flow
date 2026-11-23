@@ -85,9 +85,12 @@ class RecurringPage extends ConsumerWidget {
                           if (i > 0) const Divider(height: 1),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-                            child: Row(
+                            child: Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Expanded(
+                                SizedBox(
+                                  width: double.infinity,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,

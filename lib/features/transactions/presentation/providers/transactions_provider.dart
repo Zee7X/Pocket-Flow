@@ -11,6 +11,7 @@ import '../../../../features/salary_allocation/presentation/providers/salary_all
 import '../../../alerts/budget_alerts.dart';
 import '../../../smart/presentation/providers/smart_providers.dart';
 import '../../../wallets/presentation/providers/wallets_provider.dart';
+import '../../../salary_allocation/domain/salary_duplicate.dart';
 import '../../data/transaction_repository.dart';
 import '../../domain/transaction.dart';
 
@@ -262,6 +263,35 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionModel>> {
       return alert;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Bila pemasukan ini adalah gaji yang sudah tercatat lewat Alokasi Gaji,
+  /// kembalikan transaksi gaji tersebut. Null = bukan duplikat.
+  Future<TransactionModel?> findSalaryDuplicate({
+    required int amount,
+    required DateTime date,
+    String? text,
+  }) async {
+    try {
+      final entries = await ref.read(salaryHistoryProvider.future);
+      final e = matchSalaryEntry(entries, amount: amount, date: date, text: text);
+      if (e == null) return null;
+      return await ref
+          .read(transactionRepositoryProvider)
+          .findIncomeByNote(salaryTransactionNote(e));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Gabungkan pemasukan yang terdeteksi ke transaksi gaji yang sudah ada:
+  /// tidak membuat transaksi baru, hanya melengkapi dompet tujuannya.
+  Future<void> mergeIntoSalary(TransactionModel salaryTx, {String? walletId}) async {
+    if (walletId != null && salaryTx.walletId == null) {
+      await ref.read(transactionRepositoryProvider).setWallet(salaryTx.id, walletId);
+      _invalidateRelated();
+      ref.invalidateSelf();
     }
   }
 
