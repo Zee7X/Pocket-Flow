@@ -1066,7 +1066,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ),
             ),
             TextButton(
-              onPressed: () => context.go(AppRoutes.categoriesRules),
+              onPressed: () => context.push(AppRoutes.categoriesRules),
               child: Text(
                 'Lihat Semua',
                 style: GoogleFonts.dmSans(

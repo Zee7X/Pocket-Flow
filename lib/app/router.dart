@@ -108,6 +108,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.splits, builder: (_, _) => const SplitsPage()),
       GoRoute(path: AppRoutes.import, builder: (_, _) => const ImportPage()),
       GoRoute(path: AppRoutes.more, builder: (_, _) => const MorePage()),
+      // Di luar shell (tidak punya tab di bottom nav). Dibuka dengan push dari
+      // Lainnya, Alokasi Gaji, dan Home. Bila berada di dalam shell, push dari
+      // halaman di luar shell membuat shell kedua dan layar menjadi putih.
+      GoRoute(
+        path: AppRoutes.categoriesRules,
+        name: 'categoriesRules',
+        builder: (_, _) => const CategoriesRulesPage(),
+      ),
       // Deep link pocketflow://app/voice (shortcut ikon, widget, Siri Shortcuts)
       GoRoute(path: AppRoutes.voice, builder: (_, _) => const VoiceLaunchPage()),
 
@@ -157,17 +165,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.debtsSavings,
                 name: 'debtsSavings',
                 builder: (context, state) => const DebtsSavingsPage(),
-              ),
-            ],
-          ),
-
-          // Branch 4: Aturan & Kategori
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.categoriesRules,
-                name: 'categoriesRules',
-                builder: (context, state) => const CategoriesRulesPage(),
               ),
             ],
           ),

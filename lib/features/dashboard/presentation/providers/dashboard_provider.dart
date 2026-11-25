@@ -210,7 +210,11 @@ final dashboardSummaryProvider = Provider<AsyncValue<DashboardSummary>>((ref) {
             : b.remainingAmount;
         dailyQuotaTomorrowSum += dailyQuotaTomorrow;
 
-        final int remainingDailyQuota = (dailyQuota - spentToday).clamp(0, b.remainingAmount);
+        // remainingAmount negatif bila kategori sudah lewat budget; clamp
+        // dengan batas atas < 0 melempar ArgumentError dan Home jadi error.
+        final int remainingDailyQuota = b.remainingAmount <= 0
+            ? 0
+            : (dailyQuota - spentToday).clamp(0, b.remainingAmount);
         safeSpendingToday += remainingDailyQuota;
       }
     }
