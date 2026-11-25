@@ -247,6 +247,9 @@ class ChoiceChips<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
   final bool allowDeselect;
 
+  /// Warna chip terpilih. Default [AppTheme.primary].
+  final Color? accent;
+
   const ChoiceChips({
     super.key,
     required this.values,
@@ -255,6 +258,7 @@ class ChoiceChips<T> extends StatelessWidget {
     required this.onChanged,
     this.icon,
     this.allowDeselect = true,
+    this.accent,
   });
 
   @override
@@ -268,6 +272,7 @@ class ChoiceChips<T> extends StatelessWidget {
             label: label(v),
             icon: icon?.call(v),
             selected: v == selected,
+            accent: accent ?? AppTheme.primary,
             onTap: () => onChanged(v == selected && allowDeselect ? null : v),
           ),
       ],
@@ -279,25 +284,27 @@ class _Chip extends StatelessWidget {
   final String label;
   final IconData? icon;
   final bool selected;
+  final Color accent;
   final VoidCallback onTap;
 
   const _Chip({
     required this.label,
     this.icon,
     required this.selected,
+    required this.accent,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppTheme.primary : AppTheme.textDarkPrimary;
+    final fg = selected ? accent : AppTheme.textDarkPrimary;
     return Material(
       color: selected
-          ? AppTheme.primary.withValues(alpha: 0.08)
+          ? accent.withValues(alpha: 0.08)
           : AppTheme.surfaceLight,
       shape: StadiumBorder(
         side: BorderSide(
-          color: selected ? AppTheme.primary : Ui.border,
+          color: selected ? accent : Ui.border,
           width: selected ? 1.3 : 1,
         ),
       ),
@@ -338,11 +345,15 @@ class Segmented<T> extends StatelessWidget {
   final T value;
   final ValueChanged<T> onChanged;
 
+  /// Warna segmen aktif per nilai. Null = gaya netral (putih, teks gelap).
+  final Color? Function(T)? activeColor;
+
   const Segmented({
     super.key,
     required this.items,
     required this.value,
     required this.onChanged,
+    this.activeColor,
   });
 
   @override
@@ -364,7 +375,12 @@ class Segmented<T> extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
                     color: v == value
-                        ? AppTheme.surfaceLight
+                        ? (activeColor?.call(v) == null
+                              ? AppTheme.surfaceLight
+                              : Color.alphaBlend(
+                                  activeColor!(v)!.withValues(alpha: 0.12),
+                                  AppTheme.surfaceLight,
+                                ))
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(9),
                     boxShadow: v == value
@@ -383,7 +399,7 @@ class Segmented<T> extends StatelessWidget {
                     style: Ui.body(
                       size: 13,
                       color: v == value
-                          ? AppTheme.textDarkPrimary
+                          ? (activeColor?.call(v) ?? AppTheme.textDarkPrimary)
                           : AppTheme.textDarkSecondary,
                       weight: v == value ? FontWeight.w600 : FontWeight.w500,
                     ),

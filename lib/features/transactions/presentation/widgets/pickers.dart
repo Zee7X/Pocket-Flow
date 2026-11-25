@@ -11,6 +11,15 @@ import '../../../wallets/domain/wallet.dart';
 import '../../../wallets/presentation/providers/wallets_provider.dart';
 import '../../domain/transaction.dart';
 
+/// Warna segmen jenis transaksi yang aktif: hijau untuk pemasukan,
+/// netral (null) untuk pengeluaran dan transfer.
+Color? transactionTypeActiveColor(TransactionType t) =>
+    t == TransactionType.income ? AppTheme.income : null;
+
+/// Warna tombol utama dan pilihan kategori sesuai jenis transaksi.
+Color transactionTypeAccent(TransactionType t) =>
+    t == TransactionType.income ? AppTheme.income : AppTheme.primary;
+
 /// Chip kategori sesuai jenis transaksi.
 class CategoryPicker extends ConsumerWidget {
   final TransactionType type;
@@ -42,6 +51,7 @@ class CategoryPicker extends ConsumerWidget {
       selected: value,
       label: (id) => cats.firstWhere((c) => c.id == id).name,
       onChanged: onChanged,
+      accent: transactionTypeAccent(type),
     );
   }
 }

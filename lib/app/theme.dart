@@ -32,6 +32,10 @@ class AppTheme {
   static const Color warning = Color(0xFFF59E0B);
   static const Color info = Color(0xFF3B82F6);
 
+  // Warna jenis transaksi. Pengeluaran sengaja netral; merah hanya untuk
+  // peringatan (lewat budget, jatuh tempo).
+  static const Color income = Color(0xFF059669);
+
   // Pastel Category Backgrounds
   static const Color pastelBlue = Color(0xFFEFF6FF);
   static const Color pastelGreen = Color(0xFFECFDF5);
