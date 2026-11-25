@@ -29,10 +29,51 @@ enum SmartInputStart { text, voice, receipt }
 Future<void> showSmartInputSheet(
   BuildContext context, {
   SmartInputStart start = SmartInputStart.text,
-}) {
+}) async {
+  XFile? receipt;
+  if (start == SmartInputStart.receipt) {
+    // Pilih foto dulu, baru buka sheet. Bila sheet dibuka lebih dulu,
+    // pilihan kamera/galeri muncul di atasnya dan dua modal menumpuk.
+    receipt = await pickReceiptImage(context);
+    if (receipt == null || !context.mounted) return;
+  }
   return showAppModal<void>(
     context: context,
-    builder: (_) => SmartInputSheet(start: start),
+    builder: (_) => SmartInputSheet(start: start, initialReceipt: receipt),
+  );
+}
+
+/// Menanyakan sumber foto (kamera atau galeri; di web langsung galeri),
+/// lalu membuka pemilih gambar. Null bila dibatalkan.
+Future<XFile?> pickReceiptImage(BuildContext context) async {
+  final ImageSource? source = kIsWeb
+      ? ImageSource.gallery
+      : await showModalBottomSheet<ImageSource>(
+          context: context,
+          useRootNavigator: true,
+          builder: (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: const Text('Foto struk'),
+                  onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Pilih dari galeri / screenshot'),
+                  onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                ),
+              ],
+            ),
+          ),
+        );
+  if (source == null) return null;
+  return ImagePicker().pickImage(
+    source: source,
+    maxWidth: 1600,
+    imageQuality: 80,
   );
 }
 
@@ -53,10 +94,14 @@ class SmartInputSheet extends ConsumerStatefulWidget {
 
   /// Simpan otomatis setelah selesai bicara (lihat [showVoiceCapture]).
   final bool autoSave;
+
+  /// Foto struk yang sudah dipilih sebelum sheet dibuka; langsung dibaca.
+  final XFile? initialReceipt;
   const SmartInputSheet({
     super.key,
     this.start = SmartInputStart.text,
     this.autoSave = false,
+    this.initialReceipt,
   });
 
   @override
@@ -83,7 +128,8 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.start == SmartInputStart.voice) _toggleListening();
-      if (widget.start == SmartInputStart.receipt) _scanReceipt();
+      final receipt = widget.initialReceipt;
+      if (receipt != null) _readReceipt(receipt);
     });
   }
 
@@ -204,14 +250,12 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
 
   // ─── Struk ────────────────────────────────────────────────────────────────
   Future<void> _scanReceipt() async {
-    final source = await _pickSource();
-    if (source == null) return;
-    final file = await ImagePicker().pickImage(
-      source: source,
-      maxWidth: 1600,
-      imageQuality: 80,
-    );
-    if (file == null) return;
+    final file = await pickReceiptImage(context);
+    if (file == null || !mounted) return;
+    await _readReceipt(file);
+  }
+
+  Future<void> _readReceipt(XFile file) async {
     setState(() {
       _busy = true;
       _info = null;
@@ -254,31 +298,6 @@ class _SmartInputSheetState extends ConsumerState<SmartInputSheet> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  Future<ImageSource?> _pickSource() async {
-    if (kIsWeb) return ImageSource.gallery;
-    return showModalBottomSheet<ImageSource>(
-      context: context,
-      useRootNavigator: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Foto struk'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Pilih dari galeri / screenshot'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   // ─── Simpan ───────────────────────────────────────────────────────────────

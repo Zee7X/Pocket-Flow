@@ -400,6 +400,9 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
         AppModalScaffold.cancelButton(context),
         ElevatedButton(
           onPressed: _saving ? null : () => _save(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: transactionTypeAccent(_type),
+          ),
           child: _saving
               ? const SizedBox(
                   width: 18,
@@ -424,6 +427,7 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog> {
             ],
             value: _type,
             onChanged: _setType,
+            activeColor: transactionTypeActiveColor,
           ),
           const SizedBox(height: 16),
           TextField(

@@ -112,7 +112,13 @@ class _DraftEditorSheetState extends ConsumerState<DraftEditorSheet> {
                 child: const Text('Kembali'),
               )
             : AppModalScaffold.cancelButton(context),
-        ElevatedButton(onPressed: _submit, child: Text(widget.confirmLabel)),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: transactionTypeAccent(_type),
+          ),
+          child: Text(widget.confirmLabel),
+        ),
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,6 +130,7 @@ class _DraftEditorSheetState extends ConsumerState<DraftEditorSheet> {
               (TransactionType.transfer, 'Transfer'),
             ],
             value: _type,
+            activeColor: transactionTypeActiveColor,
             onChanged: (t) => setState(() {
               if (t != _type) _categoryId = null;
               _type = t;

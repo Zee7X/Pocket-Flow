@@ -667,7 +667,9 @@ class _MonthlyReportsPageState extends ConsumerState<MonthlyReportsPage> {
       BuildContext context, ({int month, int year}) current) async {
     final picked = await showPeriodPicker(context, current);
     if (picked != null) {
-      ref.read(reportSelectedPeriodProvider.notifier).state = picked;
+      // Pakai periode global (sama dengan Home) supaya judul, pilihan aktif
+      // di pemilih bulan, laporan, dan insight selalu menunjuk bulan yang sama.
+      ref.read(selectedPeriodProvider.notifier).state = picked;
     }
   }
 }
